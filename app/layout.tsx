@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ChuneSide — Where Local Music Lives",
-  description: "Discover independent music and emerging artists from Wadadli, the Caribbean and the world.",
+  title: "ChuneSide — Local Sound. World Stage.",
+  description: "Discover independent music from Wadadli first, with selected Caribbean and international voices.",
   icons: {
-    icon: "/chuneside-logo.png",
-    shortcut: "/chuneside-logo.png",
+    icon: "/chuneside-logo-v2.png",
+    shortcut: "/chuneside-logo-v2.png",
   },
 };
 
