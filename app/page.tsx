@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ChevronDown, Disc3, ExternalLink, Heart, Menu, Music2, Pause, Play, Search, Send, Sparkles, ThumbsUp, UserPlus, X } from "lucide-react";
+import { ArrowRight, ChevronDown, Disc3, ExternalLink, Heart, Menu, Pause, Play, Search, Send, Sparkles, ThumbsUp, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Track = { id: number; title: string; artist: string; genre: string; mood: string; duration: string; colors: string; mark: string; loves: number; likes: number; fans: number };
@@ -51,7 +51,7 @@ export default function Home() {
 
   return <main>
     <header className="site-header">
-      <a href="#top" className="brand" aria-label="ChuneSide home"><span className="brand-mark"><Music2 /></span><span>Chune<span>Side</span></span></a>
+      <a href="#top" className="brand brand-image" aria-label="ChuneSide home"><img src="/chuneside-original-logo.jpg" alt="ChuneSide" /></a>
       <nav className="desktop-nav" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#artists">Artists</a><a href="#genres">Genres</a><a href="#submit">Submit music</a></nav>
       <Button className="menu-button" variant="ghost" size="icon" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Open menu">{mobileOpen ? <X /> : <Menu />}</Button>
       {mobileOpen && <nav className="mobile-nav" aria-label="Mobile navigation"><a href="#discover" onClick={() => setMobileOpen(false)}>Discover</a><a href="#artists" onClick={() => setMobileOpen(false)}>Artists</a><a href="#genres" onClick={() => setMobileOpen(false)}>Genres</a><a href="#submit" onClick={() => setMobileOpen(false)}>Submit music</a></nav>}
@@ -82,9 +82,9 @@ export default function Home() {
 
     <section className="feature-strip section-wrap"><div className="feature-art"><Cover track={tracks[2]} large /></div><div className="feature-copy"><span className="kicker"><Sparkles /> Artist spotlight</span><h2>Meet Nia Vale.</h2><p>A bold new R&amp;B voice blending late-night soul, island cadence and fearless writing. ChuneSide goes beyond the song to introduce the artist behind it.</p><div className="spotlight-meta"><span>St. John&apos;s, Antigua</span><span>R&amp;B / Soul</span><span>Independent</span></div><div className="social-row"><Button onClick={() => chooseTrack(tracks[2])}><Play fill="currentColor" /> Play spotlight</Button><Button variant="outline" aria-label="Preview Instagram link"><ExternalLink /> Instagram</Button></div><small>Sample artist profile for the ChuneSide preview.</small></div></section>
 
-    <section id="submit" className="submit-section section-wrap"><div className="submit-icon"><Send /></div><span className="kicker">Artists &amp; managers</span><h2>Ready to be heard?</h2><p>Send your finished track, cover artwork, short biography and social links. Every submission is personally reviewed before it appears on ChuneSide.</p><Button size="lg" onClick={() => window.alert("Add your official ChuneSide email to activate submissions.")}>Submission details <ArrowRight /></Button><div className="submission-steps"><span><b>01</b>Send your package</span><span><b>02</b>We review it</span><span><b>03</b>Approved music goes live</span></div></section>
+    <section id="submit" className="submit-section section-wrap"><div className="submit-icon"><Send /></div><span className="kicker">Artists &amp; managers</span><h2>Ready to be heard?</h2><p>Send your finished track, cover artwork, short biography and social links. Every submission is personally reviewed before it appears on ChuneSide.</p><Button size="lg" asChild><a href="mailto:chuneside@gmail.com?subject=ChuneSide%20Music%20Submission&body=Artist%20name%3A%0ASong%20title%3A%0AGenre%3A%0ASocial%20links%3A%0A%0APlease%20attach%20your%20finished%20track%2C%20cover%20artwork%20and%20short%20biography.">Submit to chuneside@gmail.com <ArrowRight /></a></Button><div className="submission-steps"><span><b>01</b>Send your package</span><span><b>02</b>We review it</span><span><b>03</b>Approved music goes live</span></div></section>
 
-    <footer><a href="#top" className="brand"><span className="brand-mark"><Music2 /></span><span>Chune<span>Side</span></span></a><p>Local chunes. Real talent. From Wadadli to the world.</p><span>© 2026 ChuneSide</span></footer>
+    <footer><a href="#top" className="brand brand-image" aria-label="ChuneSide home"><img src="/chuneside-original-logo.jpg" alt="ChuneSide" /></a><p>Local chunes. Real talent. From Wadadli to the world.</p><span>© 2026 ChuneSide</span></footer>
 
     <aside className="now-playing" aria-label="Now playing"><div className="mini-cover bg-gradient-to-br from-[#ff4d00] to-[#ffe600]">{active.mark}</div><div className="now-meta"><strong>{active.title}</strong><span>{active.artist}</span></div><Button size="icon" variant="ghost" onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}>{playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</Button><div className="progress-shell"><span style={{ width: `${progress}%` }} /></div><span className="time">{Math.floor(progress * 2.08 / 60)}:{String(Math.floor(progress * 2.08) % 60).padStart(2, "0")} / {active.duration}</span><button className="queue" aria-label="Open player menu"><ChevronDown /></button></aside>
   </main>;
