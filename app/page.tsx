@@ -5,7 +5,7 @@ import {
   ArrowRight, BadgeCheck, Bot, ChevronDown, Clock3, Disc3, DollarSign,
   ExternalLink, Heart, Menu, MessageCircle, Mic2, Pause, Play, Radio,
   Search, Send, Share2, ShieldCheck, SkipBack, SkipForward, Sparkles,
-  ThumbsUp, Trophy, UserPlus, Users, Video, Volume2, X,
+  Trophy, UserPlus, Users, Video, Volume2, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,6 +38,15 @@ const videos = [
 
 const genres = ["All", "Soca", "Reggae", "Dancehall", "R&B", "Afrobeat", "Alternative", "Electronic", "Fusion"];
 
+type MemberState = {
+  authenticated: boolean;
+  member: { displayName: string; email: string } | null;
+  likes: number[];
+  follows: string[];
+  allTime: Record<string, number>;
+  monthly: Record<string, number>;
+};
+
 function Cover({ track, large = false }: { track: Track; large?: boolean }) {
   return <div className={`cover relative overflow-hidden bg-gradient-to-br ${track.colors} ${large ? "aspect-[1.07]" : "aspect-square"}`}>
     <div className="cover-grid" /><Disc3 className="absolute -bottom-8 -right-8 h-36 w-36 text-black/20" strokeWidth={1.2} />
@@ -56,7 +65,10 @@ export default function Home() {
   const [progress, setProgress] = useState(18);
   const [volume, setVolume] = useState(72);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [reactions, setReactions] = useState<Record<number, string[]>>({});
+  const [memberState, setMemberState] = useState<MemberState | null>(null);
+  const [memberGate, setMemberGate] = useState(false);
+  const [memberBusy, setMemberBusy] = useState<string | null>(null);
+  const [rankPeriod, setRankPeriod] = useState<"monthly" | "allTime">("monthly");
   const [heroIndex, setHeroIndex] = useState(0);
   const [comments, setComments] = useState<string[]>([]);
   const [comment, setComment] = useState("");
@@ -65,9 +77,9 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      setReactions(JSON.parse(window.localStorage.getItem("chuneside-reactions") || "{}"));
       setComments(JSON.parse(window.localStorage.getItem("chuneside-comments") || "[]"));
     } catch { /* keep clean defaults */ }
+    fetch("/api/member-state").then((response) => response.ok ? response.json() : null).then((data) => data && setMemberState(data));
   }, []);
   useEffect(() => {
     if (!playing) return;
@@ -93,15 +105,15 @@ export default function Home() {
     const index = tracks.findIndex((track) => track.id === activeId);
     chooseTrack(tracks[(index + direction + tracks.length) % tracks.length]);
   };
-  const react = (trackId: number, reaction: string) => {
-    const next = { ...reactions };
-    const current = new Set(next[trackId] ?? []);
-    current.has(reaction) ? current.delete(reaction) : current.add(reaction);
-    next[trackId] = [...current];
-    setReactions(next);
-    window.localStorage.setItem("chuneside-reactions", JSON.stringify(next));
+  const memberAction = async (action: "like" | "follow", track: Track) => {
+    if (!memberState?.authenticated) { setMemberGate(true); return; }
+    const key = `${action}-${track.id}`;
+    setMemberBusy(key);
+    const response = await fetch("/api/member-state", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, trackId: track.id, artist: track.artist }) });
+    if (response.ok) setMemberState(await response.json());
+    setMemberBusy(null);
   };
-  const reactionCount = (track: Track, key: string, base: number) => base + ((reactions[track.id] ?? []).includes(key) ? 1 : 0);
+  const ranking = useMemo(() => tracks.map((track) => ({ track, count: memberState?.[rankPeriod]?.[String(track.id)] ?? 0 })).filter((item) => item.count > 0).sort((a, b) => b.count - a.count || a.track.id - b.track.id), [memberState, rankPeriod]);
   const addComment = (event: FormEvent) => {
     event.preventDefault();
     const clean = comment.trim();
@@ -118,10 +130,10 @@ export default function Home() {
   return <main>
     <header className="site-header">
       <a href="#top" className="brand brand-image" aria-label="ChuneSide home"><img src="/chuneside-logo-v2.png" alt="ChuneSide" /></a>
-      <nav className="desktop-nav" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#ai-music">AI music</a><a href="#stories">Stories</a><a href="#contests">Contests</a><a href="#community">Community</a><a href="#guidelines">Guidelines</a></nav>
-      <Button className="submit-top" asChild><a href="#submit">Submit music <ArrowRight /></a></Button>
+      <nav className="desktop-nav" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#charts">Charts</a><a href="#ai-music">AI music</a><a href="#stories">Stories</a><a href="#contests">Contests</a><a href="#community">Community</a></nav>
+      {memberState?.authenticated ? <a className="member-pill" href="/signout-with-chatgpt?return_to=%2F" target="_top"><BadgeCheck /> {memberState.member?.displayName}<span>Sign out</span></a> : <a className="member-pill join" href="/signin-with-chatgpt?return_to=%2F%23charts" target="_top"><UserPlus /> Join free</a>}
       <Button className="menu-button" variant="ghost" size="icon" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Open menu">{mobileOpen ? <X /> : <Menu />}</Button>
-      {mobileOpen && <nav className="mobile-nav" aria-label="Mobile navigation">{[["Discover", "#discover"], ["AI music", "#ai-music"], ["Stories", "#stories"], ["Contests", "#contests"], ["Community", "#community"], ["Guidelines", "#guidelines"], ["Submit music", "#submit"]].map(([label, href]) => <a key={href} href={href} onClick={() => setMobileOpen(false)}>{label}</a>)}</nav>}
+      {mobileOpen && <nav className="mobile-nav" aria-label="Mobile navigation">{[["Discover", "#discover"], ["Charts", "#charts"], ["AI music", "#ai-music"], ["Stories", "#stories"], ["Contests", "#contests"], ["Community", "#community"], ["Guidelines", "#guidelines"], ["Submit music", "#submit"]].map(([label, href]) => <a key={href} href={href} onClick={() => setMobileOpen(false)}>{label}</a>)}</nav>}
     </header>
 
     <section id="top" className={`cinema-hero ${hero.tint}`}>
@@ -149,10 +161,17 @@ export default function Home() {
           <div className="track-grid">{visibleTracks.map((track, index) => <article className="track-card" key={track.id}>
             <button className="cover-button" onClick={() => chooseTrack(track)} aria-label={`Play ${track.title} by ${track.artist}`}><Cover track={track} /><span className="play-float">{activeId === track.id && playing ? <Pause /> : <Play fill="currentColor" />}</span><span className="track-number">{String(index + 1).padStart(2, "0")}</span></button>
             <div className="track-meta"><div><h3>{track.title}</h3><p>{track.artist} · {track.genre}</p><small>{track.origin} · {track.creation}</small></div><span>{track.duration}</span></div>
-            <div className="reaction-row"><button className={(reactions[track.id] ?? []).includes("love") ? "selected" : ""} onClick={() => react(track.id, "love")}><Heart fill="currentColor" /> {reactionCount(track, "love", track.loves)}</button><button className={(reactions[track.id] ?? []).includes("like") ? "selected" : ""} onClick={() => react(track.id, "like")}><ThumbsUp fill="currentColor" /> {reactionCount(track, "like", track.likes)}</button><button className={(reactions[track.id] ?? []).includes("fan") ? "selected fan" : "fan"} onClick={() => react(track.id, "fan")}><UserPlus /> Fan</button></div>
+            <div className="reaction-row"><button disabled={memberBusy === `like-${track.id}`} className={memberState?.likes.includes(track.id) ? "selected" : ""} onClick={() => memberAction("like", track)}><Heart fill="currentColor" /> {memberState?.allTime[String(track.id)] ?? 0} verified likes</button><button disabled={memberBusy === `follow-${track.id}`} className={memberState?.follows.includes(track.artist) ? "selected fan" : "fan"} onClick={() => memberAction("follow", track)}><UserPlus /> {memberState?.follows.includes(track.artist) ? "Following" : "Follow"}</button></div>
           </article>)}{visibleTracks.length === 0 && <div className="empty-state"><Disc3 /><h3>No chunes found</h3><p>Try another lane, title or genre.</p></div>}</div>
         </TabsContent>
       </Tabs>
+    </section>
+
+    <section id="charts" className="charts section-wrap">
+      <div className="section-heading"><div><span className="kicker"><Trophy /> Verified member charts</span><h2>The ChuneSide ranking.</h2></div><div className="chart-period"><button className={rankPeriod === "monthly" ? "active" : ""} onClick={() => setRankPeriod("monthly")}>This month</button><button className={rankPeriod === "allTime" ? "active" : ""} onClick={() => setRankPeriod("allTime")}>All time</button></div></div>
+      <div className="ranking-rule"><BadgeCheck /><p><strong>One member. One like. One honest chart.</strong> Guests can listen, but only signed-in members can Like or Follow. Removing a Like removes it from the chart.</p></div>
+      {ranking.length ? <div className="leaderboard">{ranking.map(({ track, count }, index) => <article key={track.id} className={index === 0 ? "number-one" : ""}><span className="rank-number">{String(index + 1).padStart(2, "0")}</span><div className={`rank-cover bg-gradient-to-br ${track.colors}`}>{track.mark}</div><div className="rank-track"><strong>{track.title}</strong><span>{track.artist} · {track.origin}</span></div><div className="rank-score"><Heart fill="currentColor" /><strong>{count}</strong><span>unique {count === 1 ? "like" : "likes"}</span></div><button onClick={() => chooseTrack(track)} aria-label={`Play ${track.title}`}><Play fill="currentColor" /></button></article>)}</div> : <div className="chart-empty"><Trophy /><h3>The chart is ready for its first member vote.</h3><p>Like an approved song to place it on the official {rankPeriod === "monthly" ? "monthly" : "all-time"} ranking.</p></div>}
+      <div className="chart-note"><span>Monthly chart</span><p>Counts unique Likes added during the current calendar month.</p><span>All-time chart</span><p>Counts every active unique member Like since the song joined ChuneSide.</p></div>
     </section>
 
     <section id="ai-music" className="ai-section section-wrap">
@@ -188,6 +207,8 @@ export default function Home() {
     <section id="submit" className="submit-section section-wrap"><div className="submit-icon"><Send /></div><span className="kicker">Artists &amp; managers worldwide</span><h2>Bring your sound<br />to the Side.</h2><p>Send your finished track, cover artwork, short biography, social links and creation disclosure. Wadadli artists receive priority placement; exceptional Caribbean and international work can enter the wider lanes.</p><Button size="lg" asChild><a href="mailto:chuneside@gmail.com?subject=ChuneSide%20Music%20Submission&body=Artist%20name%3A%0ASong%20title%3A%0ACountry%3A%0AGenre%3A%0AArtist-made%20or%20AI-assisted%3A%0ASocial%20links%3A%0A%0APlease%20attach%20your%20track%2C%20artwork%2C%20short%20bio%20and%20rights%20confirmation.">Submit to chuneside@gmail.com <ArrowRight /></a></Button><div className="submission-steps"><span><b>01</b>Send your package</span><span><b>02</b>Rights + safety review</span><span><b>03</b>Approved music goes live</span></div></section>
 
     <footer><a href="#top" className="brand brand-image"><img src="/chuneside-logo-v2.png" alt="ChuneSide" /></a><p>From Wadadli, the Caribbean and the World.</p><div className="footer-actions"><button onClick={share}><Share2 /> Share ChuneSide</button><a href="mailto:chuneside@gmail.com"><ExternalLink /> Email</a></div><span>© 2026 ChuneSide</span></footer>
+
+    <Dialog open={memberGate} onOpenChange={setMemberGate}><DialogContent className="member-dialog"><DialogHeader><DialogTitle>Join ChuneSide to make it count</DialogTitle><DialogDescription>Listening is open to guests. Likes and artist follows are reserved for signed-in members so every chart position represents a unique person.</DialogDescription></DialogHeader><div className="member-benefits"><span><Heart /> One verified Like per song</span><span><Trophy /> Help shape monthly rankings</span><span><UserPlus /> Follow your favourite artists</span></div><Button asChild><a href="/signin-with-chatgpt?return_to=%2F%23charts" target="_top">Sign in with ChatGPT <ArrowRight /></a></Button><small>Free membership. Your email is used only to identify your unique ChuneSide account.</small></DialogContent></Dialog>
 
     <aside className="now-playing" aria-label="Preview player"><div className={`mini-cover bg-gradient-to-br ${active.colors}`}>{active.mark}</div><div className="now-meta"><strong>{active.title}</strong><span>{active.artist} · Preview</span></div><div className="player-controls"><button onClick={() => moveTrack(-1)} aria-label="Previous track"><SkipBack /></button><button className="main-play" onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}>{playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button><button onClick={() => moveTrack(1)} aria-label="Next track"><SkipForward /></button></div><input className="progress-range" type="range" min="0" max="100" step=".1" value={progress} onChange={(event) => setProgress(Number(event.target.value))} aria-label="Track progress" /><span className="time">{Math.floor(progress * 2.08 / 60)}:{String(Math.floor(progress * 2.08) % 60).padStart(2, "0")} / {active.duration}</span><label className="volume"><Volume2 /><input type="range" min="0" max="100" value={volume} onChange={(event) => setVolume(Number(event.target.value))} aria-label="Volume" /></label><ChevronDown className="queue" /></aside>
   </main>;
