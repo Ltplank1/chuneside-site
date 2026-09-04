@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ChuneSide — Local Sound. World Stage.",
-  description: "Discover independent music from Wadadli first, with selected Caribbean and international voices.",
+  description: "Stream and discover independent music from Wadadli first, with Caribbean, international and clearly labelled AI-assisted voices.",
   icons: {
     icon: "/chuneside-logo-v2.png",
     shortcut: "/chuneside-logo-v2.png",
