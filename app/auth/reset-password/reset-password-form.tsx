@@ -19,7 +19,7 @@ export function ResetPasswordForm() {
     try {
       const email = String(new FormData(event.currentTarget).get("email") || "").trim();
       const redirectTo = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent("/auth/update-password")}`;
-      const { error: resetError } = await createSupabaseBrowserClient().auth.resetPasswordForEmail(email, { redirectTo });
+      const { error: resetError } = await (await createSupabaseBrowserClient()).auth.resetPasswordForEmail(email, { redirectTo });
       if (resetError) throw resetError;
       setMessage("If that email belongs to a ChuneSide account, a reset link is on its way.");
     } catch (caught) {

@@ -163,6 +163,17 @@ test("provisions the D1 member record after Supabase authentication completes", 
   assert.match(provisioner, /lower\(\$\{members\.email\}\) = lower\(\$\{email\}\)/);
 });
 
+test("loads the public Supabase browser configuration from the production runtime when needed", async () => {
+  const [client, route] = await Promise.all([
+    readFile(path.join(root, "lib", "supabase", "client.ts"), "utf8"),
+    readFile(path.join(root, "app", "api", "auth", "config", "route.ts"), "utf8"),
+  ]);
+
+  assert.match(client, /fetch\("\/api\/auth\/config"/);
+  assert.match(route, /Cache-Control": "no-store"/);
+  assert.doesNotMatch(route, /SERVICE_ROLE|R2_|SMTP|ADMIN_EMAILS/);
+});
+
 test("registers configurable admin-test controls for Stage, AI limits, and the news bar", async () => {
   const { featureFlagDefinitions, defaultPublicFeatureSnapshot } = await vite.ssrLoadModule("/lib/feature-flags.ts");
   const byKey = new Map(featureFlagDefinitions.map((flag) => [flag.key, flag]));

@@ -21,7 +21,7 @@ export function UpdatePasswordForm() {
     if (password !== confirmation) { setError("Passwords do not match."); return; }
     setBusy(true);
     try {
-      const { error: updateError } = await createSupabaseBrowserClient().auth.updateUser({ password });
+      const { error: updateError } = await (await createSupabaseBrowserClient()).auth.updateUser({ password });
       if (updateError) throw updateError;
       setMessage("Your password has been updated. You can now continue to ChuneSide.");
     } catch (caught) {

@@ -18,7 +18,7 @@ export function SupabaseAuthForm({ mode, returnTo }: { mode: "sign-in" | "sign-u
     if (mode === "sign-up" && password !== confirmation) { setError("Passwords do not match."); return; }
     setBusy(true);
     try {
-      const supabase = createSupabaseBrowserClient();
+      const supabase = await createSupabaseBrowserClient();
       const email = String(form.get("email") || "").trim();
       const result = mode === "sign-in"
         ? await supabase.auth.signInWithPassword({ email, password })
@@ -31,7 +31,7 @@ export function SupabaseAuthForm({ mode, returnTo }: { mode: "sign-in" | "sign-u
   }
   async function google() {
     setBusy(true); setError("");
-    try { const { error } = await createSupabaseBrowserClient().auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}` } }); if (error) throw error; }
+    try { const { error } = await (await createSupabaseBrowserClient()).auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}` } }); if (error) throw error; }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Google sign-in could not be started."); setBusy(false); }
   }
   return <div className="supabase-auth-form"><Button type="button" variant="outline" disabled={busy} onClick={google}><Globe2 /> Continue with Google</Button><div className="auth-divider"><span>or use email</span></div><form onSubmit={submit}>{mode === "sign-up" && <label><span>Display name</span><Input name="displayName" autoComplete="name" required maxLength={80} /></label>}<label><span>Email</span><Input name="email" type="email" autoComplete="email" required /></label><label><span>Password</span><Input name="password" type="password" autoComplete={mode === "sign-in" ? "current-password" : "new-password"} minLength={8} required /></label>{mode === "sign-up" && <label><span>Confirm password</span><Input name="passwordConfirmation" type="password" autoComplete="new-password" minLength={8} required /></label>}<Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Mail />} {mode === "sign-in" ? "Sign in" : "Create account"} <ArrowRight /></Button></form>{message && <p className="auth-success" role="status">{message}</p>}{error && <p className="auth-error" role="alert">{error}</p>}</div>;
