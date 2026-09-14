@@ -1,6 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServerClient, supabaseConfigured } from "@/lib/supabase/server";
 import { authRedirect } from "@/app/auth/paths";
+import { provisionMember } from "@/lib/member-provisioning";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -13,8 +14,9 @@ export async function GET(request: Request) {
 
   try {
     const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+    const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     if (error) return signInRedirect(url, "confirmation_failed", returnTo);
+    if (data.user) await provisionMember(data.user);
   } catch {
     return signInRedirect(url, "confirmation_failed", returnTo);
   }

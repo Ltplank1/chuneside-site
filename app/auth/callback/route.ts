@@ -1,5 +1,6 @@
 import { createSupabaseServerClient, supabaseConfigured } from "@/lib/supabase/server";
 import { authRedirect } from "@/app/auth/paths";
+import { provisionMember } from "@/lib/member-provisioning";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -11,8 +12,9 @@ export async function GET(request: Request) {
   if (!code) return authRedirect(new URL(`/auth/sign-in?error=missing_code&returnTo=${encodeURIComponent(returnTo)}`, url.origin));
   try {
     const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) return authRedirect(new URL(`/auth/sign-in?error=callback_failed&returnTo=${encodeURIComponent(returnTo)}`, url.origin));
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error || !data.user) return authRedirect(new URL(`/auth/sign-in?error=callback_failed&returnTo=${encodeURIComponent(returnTo)}`, url.origin));
+    await provisionMember(data.user);
   } catch {
     return authRedirect(new URL(`/auth/sign-in?error=callback_failed&returnTo=${encodeURIComponent(returnTo)}`, url.origin));
   }

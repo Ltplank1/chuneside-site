@@ -151,6 +151,18 @@ test("validates uploaded media by size, type, and file signature", async () => {
   assert.equal(parseByteRange("bytes=1000-1001", 1000), null);
 });
 
+test("provisions the D1 member record after Supabase authentication completes", async () => {
+  const [callback, confirmation, provisioner] = await Promise.all([
+    readFile(path.join(root, "app", "auth", "callback", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "auth", "confirm", "route.ts"), "utf8"),
+    readFile(path.join(root, "lib", "member-provisioning.ts"), "utf8"),
+  ]);
+
+  assert.match(callback, /await provisionMember\(data\.user\)/);
+  assert.match(confirmation, /await provisionMember\(data\.user\)/);
+  assert.match(provisioner, /lower\(\$\{members\.email\}\) = lower\(\$\{email\}\)/);
+});
+
 test("registers configurable admin-test controls for Stage, AI limits, and the news bar", async () => {
   const { featureFlagDefinitions, defaultPublicFeatureSnapshot } = await vite.ssrLoadModule("/lib/feature-flags.ts");
   const byKey = new Map(featureFlagDefinitions.map((flag) => [flag.key, flag]));
