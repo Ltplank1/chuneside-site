@@ -11,7 +11,7 @@ This repository is the complete source for the current hosted ChuneSide baseline
 - Vite 8
 - Cloudflare Worker runtime
 - Cloudflare D1 (SQLite) for members, Likes, Follows, feature flags, artists, releases, review state, and media metadata
-- Cloudflare R2 for private audio and cover upload storage
+- Cloudflare R2 for private audio, artwork, and approved release-video storage
 - Drizzle ORM and checked-in SQL migrations
 - Tailwind CSS 4 plus the included UI component catalogue
 - Supabase Auth for production email/password and Google sign-in, with the existing Sites sign-in fallback retained until Supabase is configured
@@ -56,7 +56,7 @@ npm run preflight:production
 
 The check verifies Supabase public configuration, the initial administrator allowlist, the production-only local-auth guard, Sites D1/R2 bindings, and the checked-in migration set. It does not print credentials.
 
-The hosted database is declared in `.openai/hosting.json` as the logical D1 binding `DB`, and media storage is declared as the logical R2 binding `MEDIA`. Production supplies the real bindings automatically. Application code accesses them through `db/index.ts` and `lib/media-storage.ts`; do not hard-code a database, bucket identifier, or credential.
+The hosted database is declared in `.openai/hosting.json` as the logical D1 binding `DB`, and media storage is declared as the logical R2 binding `MEDIA`. Production supplies the real bindings automatically. Application code accesses them through `db/index.ts` and `lib/media-storage.ts`; do not hard-code a database, bucket identifier, or credential. Artist uploads are authorized by the server, streamed into private R2 objects, recorded in D1 by object key only, and delivered through controlled media routes after review approval. Supported release files are MP3/WAV/M4A/OGG audio (40 MB), JPG/PNG/WebP artwork (8 MB), and MP4/WebM/MOV video (100 MB).
 
 The schema is in `db/schema.ts`. Checked-in migrations currently include:
 

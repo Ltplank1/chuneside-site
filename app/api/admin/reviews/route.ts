@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     if (release.approvalStatus !== "approved") return NextResponse.json({ error: "Only approved releases can be taken down." }, { status: 409 });
     const now = new Date();
     const media = await db.select({ id: releaseMedia.id }).from(releaseMedia).where(and(eq(releaseMedia.releaseId, release.id), ne(releaseMedia.status, "deleted")));
-    await db.update(releases).set({ approvalStatus: "disabled", audioUrl: null, coverImageUrl: null, reviewNote: parsed.data.reviewNote, reviewedAt: now, reviewedBy: admin.email, updatedAt: now }).where(eq(releases.id, release.id));
+    await db.update(releases).set({ approvalStatus: "disabled", audioUrl: null, coverImageUrl: null, musicVideoUrl: null, reviewNote: parsed.data.reviewNote, reviewedAt: now, reviewedBy: admin.email, updatedAt: now }).where(eq(releases.id, release.id));
     await db.update(releaseMedia).set({ status: "deleted", updatedAt: now }).where(and(eq(releaseMedia.releaseId, release.id), ne(releaseMedia.status, "deleted")));
     await db.insert(adminAuditLogs).values({ id: randomUUID(), actorId: admin.id, actorEmail: admin.email, action: "catalog.release_takedown", entityType: "release", entityId: release.id, details: JSON.stringify({ title: release.title, reviewNote: parsed.data.reviewNote, deletedMediaIds: media.map((item) => item.id) }), createdAt: now });
     const [updatedRelease] = await db.select().from(releases).where(eq(releases.id, release.id)).limit(1);
@@ -49,6 +49,7 @@ export async function POST(request: Request) {
       approvalStatus: "pending",
       audioUrl: null,
       coverImageUrl: null,
+      musicVideoUrl: null,
       reviewNote: `Reinstated for review: ${parsed.data.reviewNote}`,
       reviewedAt: now,
       reviewedBy: admin.email,
@@ -91,6 +92,7 @@ export async function POST(request: Request) {
     : [];
   const audio = media.find((item) => item.kind === "audio");
   const cover = media.find((item) => item.kind === "cover");
+  const video = media.find((item) => item.kind === "video");
 
   await db.update(releases).set({
     approvalStatus: parsed.data.decision === "approve" ? "approved" : "rejected",
@@ -100,6 +102,7 @@ export async function POST(request: Request) {
     reviewedBy: admin.email,
     ...(audio ? { audioUrl: `/api/media/${audio.id}` } : {}),
     ...(cover ? { coverImageUrl: `/api/media/${cover.id}` } : {}),
+    ...(video ? { musicVideoUrl: `/api/media/${video.id}` } : {}),
     updatedAt: now,
   }).where(eq(releases.id, release.id));
   if (parsed.data.decision === "approve") {

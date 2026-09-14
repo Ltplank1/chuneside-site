@@ -137,9 +137,12 @@ test("validates uploaded media by size, type, and file signature", async () => {
   const { parseByteRange, validateMediaFile } = await vite.ssrLoadModule("/lib/media-policy.ts");
   const mp3Header = Uint8Array.from([0x49, 0x44, 0x33, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   const pngHeader = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const webmHeader = Uint8Array.from([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0]);
 
   assert.equal(validateMediaFile("audio", { size: 1024, type: "audio/mpeg" }, mp3Header), null);
   assert.equal(validateMediaFile("cover", { size: 1024, type: "image/png" }, pngHeader), null);
+  assert.equal(validateMediaFile("video", { size: 1024, type: "video/webm" }, webmHeader), null);
+  assert.equal(validateMediaFile("video", { size: 1024, type: "video/webm" }, mp3Header), "The video file contents do not match its type.");
   assert.equal(validateMediaFile("cover", { size: 1024, type: "image/png" }, mp3Header), "The cover file contents do not match its type.");
   assert.equal(validateMediaFile("audio", { size: 1024, type: "application/octet-stream" }, mp3Header), "Unsupported audio file type.");
   assert.deepEqual(parseByteRange("bytes=100-199", 1000), { offset: 100, length: 100 });

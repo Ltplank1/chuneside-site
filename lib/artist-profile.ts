@@ -135,6 +135,7 @@ export const getPublicArtistProfile = cache(async (slug: string): Promise<Public
         duration: formatTrackDuration(release.durationSeconds),
         audioUrl: release.audioUrl,
         coverImageUrl: release.coverImageUrl,
+        musicVideoUrl: release.musicVideoUrl,
         colors: release.accentGradient ?? "from-[#242832] via-[#171a21] to-[#090a0d]",
         mark: release.shortMark ?? artist.stageName.slice(0, 2).toUpperCase(),
         loves: 0,

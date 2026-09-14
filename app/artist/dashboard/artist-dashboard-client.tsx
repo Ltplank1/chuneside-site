@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Bot, BriefcaseBusiness, Disc3, Edit3, FileAudio, ImageIcon, LoaderCircle, PlaySquare, Plus, Send, Upload } from "lucide-react";
+import { BadgeCheck, Bot, BriefcaseBusiness, Disc3, Edit3, FileAudio, ImageIcon, LoaderCircle, PlaySquare, Plus, Send, Upload, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -50,7 +50,7 @@ type WorkspaceRelease = {
 type WorkspaceMedia = {
   id: string;
   releaseId: string;
-  kind: "audio" | "cover";
+  kind: "audio" | "cover" | "video";
   originalName: string;
   sizeBytes: number;
   status: "pending" | "ready" | "rejected" | "deleted";
@@ -153,8 +153,8 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const releaseId = String(form.get("releaseId") ?? "");
-    const files = (["audio", "cover"] as const).map((kind) => ({ kind, file: form.get(kind) })).filter((item): item is { kind: "audio" | "cover"; file: File } => item.file instanceof File && item.file.size > 0);
-    if (!files.length) { setError("Choose an audio master, cover artwork, or both."); return; }
+    const files = (["audio", "cover", "video"] as const).map((kind) => ({ kind, file: form.get(kind) })).filter((item): item is { kind: "audio" | "cover" | "video"; file: File } => item.file instanceof File && item.file.size > 0);
+    if (!files.length) { setError("Choose an audio master, cover artwork, or release video."); return; }
 
     setBusy(true);
     setError("");
@@ -363,7 +363,7 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
                 <article key={release.id}>
                   <span>{release.legacyTrackId ? String(release.legacyTrackId).padStart(2, "0") : "--"}</span>
                   <div><h3>{release.title}</h3><p>{profileNames.get(release.artistProfileId)} · {release.genre}</p>{release.reviewNote && <em>{release.reviewNote}</em>}</div>
-                  <small className="workspace-media-state"><span><FileAudio /> {mediaRows.some((media) => media.releaseId === release.id && media.kind === "audio") ? "Audio ready" : "No audio"}</span><span><ImageIcon /> {mediaRows.some((media) => media.releaseId === release.id && media.kind === "cover") ? "Cover ready" : "No cover"}</span></small>
+                  <small className="workspace-media-state"><span><FileAudio /> {mediaRows.some((media) => media.releaseId === release.id && media.kind === "audio") ? "Audio ready" : "No audio"}</span><span><ImageIcon /> {mediaRows.some((media) => media.releaseId === release.id && media.kind === "cover") ? "Cover ready" : "No cover"}</span><span><Video /> {mediaRows.some((media) => media.releaseId === release.id && media.kind === "video") ? "Video ready" : "No video"}</span></small>
                   <strong className={"workspace-status " + release.approvalStatus}>{release.approvalStatus}</strong>
                   {release.approvalStatus === "rejected" && <Button type="button" variant="outline" size="sm" className="workspace-resubmit-button" onClick={() => { setError(""); setReleaseEditOpen(release); }}><Edit3 /> Correct</Button>}
                 </article>
@@ -423,12 +423,13 @@ function MediaDialog({ open, releases, busy, error, onClose, onSubmit }: { open:
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="catalog-editor-dialog">
-        <DialogHeader><DialogTitle>Upload release media</DialogTitle><DialogDescription>Audio and artwork remain private while the release is reviewed. Uploading a replacement returns the release to pending review.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Upload release media</DialogTitle><DialogDescription>Audio, artwork, and video remain private in R2 while the release is reviewed. Uploading a replacement returns the release to pending review.</DialogDescription></DialogHeader>
         <form className="catalog-editor-form" onSubmit={onSubmit}>
           <Field label="Release"><Select name="releaseId" options={releases.map((release) => [release.id, release.title])} /></Field>
           <div className="catalog-form-grid">
             <Field label="Audio master (40 MB max)"><Input name="audio" type="file" accept="audio/mpeg,audio/wav,audio/mp4,audio/ogg" /></Field>
             <Field label="Cover artwork (8 MB max)"><Input name="cover" type="file" accept="image/jpeg,image/png,image/webp" /></Field>
+            <Field label="Release video (optional, 100 MB max)"><Input name="video" type="file" accept="video/mp4,video/webm,video/quicktime" /></Field>
           </div>
           {error && <p className="catalog-editor-error" role="alert">{error}</p>}
           <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy || !releases.length}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Upload />} Upload media</Button></DialogFooter>

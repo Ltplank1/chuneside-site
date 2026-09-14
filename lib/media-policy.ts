@@ -7,6 +7,10 @@ export const mediaRules = {
     maxBytes: 8 * 1024 * 1024,
     contentTypes: ["image/jpeg", "image/png", "image/webp"],
   },
+  video: {
+    maxBytes: 100 * 1024 * 1024,
+    contentTypes: ["video/mp4", "video/webm", "video/quicktime"],
+  },
   profile: {
     maxBytes: 4 * 1024 * 1024,
     contentTypes: ["image/jpeg", "image/png", "image/webp"],
@@ -18,7 +22,7 @@ export type MediaKind = keyof typeof mediaRules;
 export function validateMediaFile(kind: MediaKind, file: { size: number; type: string }, header: Uint8Array) {
   const rule = mediaRules[kind];
   if (!rule.contentTypes.includes(file.type as never)) return `Unsupported ${kind} file type.`;
-  if (file.size < 1 || file.size > rule.maxBytes) return `${kind === "audio" ? "Audio" : "Cover"} files must be ${kind === "audio" ? "40 MB" : "8 MB"} or smaller.`;
+  if (file.size < 1 || file.size > rule.maxBytes) return `${mediaLabel(kind)} files must be ${mediaLimitLabel(kind)} or smaller.`;
 
   const ascii = String.fromCharCode(...header);
   const imageSignature =
@@ -30,10 +34,21 @@ export function validateMediaFile(kind: MediaKind, file: { size: number; type: s
     (["audio/wav", "audio/x-wav"].includes(file.type) && ascii.slice(0, 4) === "RIFF" && ascii.slice(8, 12) === "WAVE") ||
     (file.type === "audio/mp4" && ascii.slice(4, 8) === "ftyp") ||
     (file.type === "audio/ogg" && ascii.slice(0, 4) === "OggS");
+  const videoSignature =
+    (["video/mp4", "video/quicktime"].includes(file.type) && ascii.slice(4, 8) === "ftyp") ||
+    (file.type === "video/webm" && header[0] === 0x1a && header[1] === 0x45 && header[2] === 0xdf && header[3] === 0xa3);
 
-  return kind === "audio"
-    ? (audioSignature ? null : "The audio file contents do not match its type.")
-    : (imageSignature ? null : `The ${kind === "profile" ? "profile photo" : "cover"} file contents do not match its type.`);
+  if (kind === "audio") return audioSignature ? null : "The audio file contents do not match its type.";
+  if (kind === "video") return videoSignature ? null : "The video file contents do not match its type.";
+  return imageSignature ? null : `The ${kind === "profile" ? "profile photo" : "cover"} file contents do not match its type.`;
+}
+
+function mediaLabel(kind: MediaKind) {
+  return kind === "audio" ? "Audio" : kind === "video" ? "Video" : kind === "profile" ? "Profile photo" : "Cover";
+}
+
+function mediaLimitLabel(kind: MediaKind) {
+  return kind === "audio" ? "40 MB" : kind === "video" ? "100 MB" : kind === "profile" ? "4 MB" : "8 MB";
 }
 
 export function parseByteRange(value: string, size: number) {

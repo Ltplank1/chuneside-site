@@ -133,7 +133,7 @@ export const releaseMedia = sqliteTable("release_media", {
   id: text("id").primaryKey(),
   releaseId: text("release_id").notNull().references(() => releases.id, { onDelete: "cascade" }),
   uploaderMemberId: text("uploader_member_id").notNull().references(() => members.id, { onDelete: "restrict" }),
-  kind: text("kind", { enum: ["audio", "cover"] }).notNull(),
+  kind: text("kind", { enum: ["audio", "cover", "video"] }).notNull(),
   objectKey: text("object_key").notNull(),
   originalName: text("original_name").notNull(),
   contentType: text("content_type").notNull(),

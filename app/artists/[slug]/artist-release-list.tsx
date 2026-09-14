@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Bot, Disc3, Pause, Play } from "lucide-react";
+import { ArrowRight, Bot, Disc3, Pause, Play, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PublicTrack } from "@/lib/public-catalog";
 
@@ -46,6 +46,7 @@ export function ArtistReleaseList({ releases }: { releases: PublicTrack[] }) {
           {release.creation === "AI-assisted" && <span className="artist-ai-label"><Bot /> AI-assisted</span>}
           <span className="artist-release-duration">{release.duration}</span>
           {release.audioUrl ? <Button type="button" size="icon" onClick={() => togglePlayback(release)} aria-label={`${activeId === release.id && playing ? "Pause" : "Play"} ${release.title}`}>{activeId === release.id && playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</Button> : <Button asChild size="icon" aria-label={`Find ${release.title} in Discovery`}><Link href="/#discover"><ArrowRight /></Link></Button>}
+          {release.musicVideoUrl && <Button asChild type="button" size="icon" variant="outline"><a href={release.musicVideoUrl} target="_blank" rel="noreferrer" aria-label={`Watch ${release.title} video`}><Video /></a></Button>}
         </article>
       ))}
       {!releases.length && (

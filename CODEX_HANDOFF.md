@@ -32,7 +32,7 @@ ChuneSide is a curated music platform for discovering upcoming artists:
 - The application is compiled by Vinext and served from the Cloudflare Worker entry point in `worker/index.ts`.
 - ChuneSide-specific API routes now cover member state, public catalogue reads, admin feature/account/catalog/review controls, artist release submissions, and controlled media upload/delivery.
 - `db/index.ts` obtains the injected D1 `DB` binding and constructs the Drizzle client.
-- `lib/media-storage.ts` obtains the injected R2 `MEDIA` binding for private upload storage and controlled review/public delivery.
+- `lib/media-storage.ts` obtains the injected R2 `MEDIA` binding for private upload storage and controlled review/public delivery. Release audio, artwork, and optional MP4/WebM/MOV video are authorized server-side, stored as private objects, and tracked by R2 object key in D1.
 - `.openai/hosting.json` preserves the existing Sites identity and declares D1 as `DB` and R2 as `MEDIA`.
 
 ### Authentication

@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 
 type MediaBucket = {
-  put(key: string, value: ArrayBuffer, options: { httpMetadata: { contentType: string }; customMetadata: Record<string, string> }): Promise<unknown>;
+  put(key: string, value: ArrayBuffer | ReadableStream<Uint8Array>, options: { httpMetadata: { contentType: string }; customMetadata: Record<string, string> }): Promise<unknown>;
   head(key: string): Promise<{ size: number; httpEtag: string } | null>;
   get(key: string, options?: { range?: { offset: number; length: number } }): Promise<{ body: ReadableStream<Uint8Array>; size: number; httpEtag: string; httpMetadata?: { contentType?: string } } | null>;
   delete(key: string): Promise<void>;

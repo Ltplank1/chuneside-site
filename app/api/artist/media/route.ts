@@ -16,6 +16,9 @@ const extensions: Record<string, string> = {
   "audio/x-wav": "wav",
   "audio/mp4": "m4a",
   "audio/ogg": "ogg",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
@@ -33,22 +36,22 @@ export async function POST(request: Request) {
   }
 
   const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (contentLength > 49 * 1024 * 1024) return NextResponse.json({ error: "Upload request is too large." }, { status: 413 });
+  if (contentLength > 101 * 1024 * 1024) return NextResponse.json({ error: "Upload request is too large." }, { status: 413 });
 
   const form = await request.formData().catch(() => null);
   const releaseId = form?.get("releaseId");
   const kind = form?.get("kind");
   const file = form?.get("file");
-  if (typeof releaseId !== "string" || !["audio", "cover"].includes(String(kind)) || !(file instanceof File)) {
+  if (typeof releaseId !== "string" || !["audio", "cover", "video"].includes(String(kind)) || !(file instanceof File)) {
     return NextResponse.json({ error: "Choose a release and a valid media file." }, { status: 400 });
   }
 
   const mediaKind = kind as MediaKind;
   if (file.size < 1 || file.size > mediaRules[mediaKind].maxBytes) {
-    return NextResponse.json({ error: `${mediaKind === "audio" ? "Audio" : "Cover"} files must be ${mediaKind === "audio" ? "40 MB" : "8 MB"} or smaller.` }, { status: 400 });
+    return NextResponse.json({ error: mediaKind === "audio" ? "Audio files must be 40 MB or smaller." : mediaKind === "video" ? "Video files must be 100 MB or smaller." : "Cover files must be 8 MB or smaller." }, { status: 400 });
   }
-  const bytes = await file.arrayBuffer();
-  const validationError = validateMediaFile(mediaKind, file, new Uint8Array(bytes.slice(0, 16)));
+  const header = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  const validationError = validateMediaFile(mediaKind, file, header);
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
   const [ownedRelease] = await db.select({ id: releases.id, status: releases.approvalStatus }).from(releases)
@@ -64,7 +67,7 @@ export async function POST(request: Request) {
   const now = new Date();
   const bucket = getMediaBucket();
 
-  await bucket.put(objectKey, bytes, {
+  await bucket.put(objectKey, file.stream(), {
     httpMetadata: { contentType: file.type },
     customMetadata: { releaseId, uploaderMemberId: access.user.id, kind: mediaKind },
   });

@@ -13,6 +13,7 @@ export type PublicTrack = {
   duration: string;
   audioUrl: string | null;
   coverImageUrl: string | null;
+  musicVideoUrl?: string | null;
   colors: string;
   mark: string;
   loves: number;

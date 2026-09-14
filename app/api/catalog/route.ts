@@ -31,6 +31,7 @@ export async function GET() {
       durationSeconds: releases.durationSeconds,
       audioUrl: releases.audioUrl,
       coverImageUrl: releases.coverImageUrl,
+      musicVideoUrl: releases.musicVideoUrl,
       colors: releases.accentGradient,
       mark: releases.shortMark,
     }).from(releases)
@@ -58,6 +59,7 @@ export async function GET() {
       duration: formatTrackDuration(row.durationSeconds),
       audioUrl: row.audioUrl,
       coverImageUrl: row.coverImageUrl,
+      musicVideoUrl: row.musicVideoUrl,
       colors: row.colors ?? "from-[#242832] via-[#171a21] to-[#090a0d]",
       mark: row.mark ?? row.artist.slice(0, 2).toUpperCase(),
       loves: 0,
