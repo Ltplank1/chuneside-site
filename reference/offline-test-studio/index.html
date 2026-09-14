@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#08090b">
+  <title>ChuneSide Offline Test Studio · v1.2.5</title>
+  <meta name="description" content="Private offline testing edition of ChuneSide.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <button class="brand" data-view="discover" aria-label="ChuneSide home"><img src="assets/chuneside-logo.png" alt="ChuneSide"></button>
+    <nav aria-label="Main navigation">
+      <button class="nav-link active" data-view="discover">Discover</button>
+      <button class="nav-link" data-view="videos">Videos</button>
+      <button class="nav-link" data-view="charts">Charts</button>
+      <button class="nav-link" data-view="activity">Activity</button>
+      <button class="nav-link" data-view="submit">How to Submit</button>
+      <button class="nav-link" data-view="admin">Test Studio</button>
+    </nav>
+    <label class="member-switch"><span>Testing as</span><select id="profileSelect" aria-label="Choose test member"></select></label><div id="memberRankBadge" class="member-rank-badge" hidden></div>
+    <button id="openVisitorTheme" class="appearance-button" hidden>◐ Appearance</button>
+    <button id="openSignup" class="signup-button">Sign up</button>
+  </header>
+
+  <main>
+    <section id="discoverView" class="view active">
+      <div class="hero" id="heroStage">
+        <video id="heroVideo" src="assets/chuneside-hero-loop.mp4" autoplay muted loop playsinline></video>
+        <img id="heroImage" alt="" hidden>
+        <div class="hero-shade"></div>
+        <div class="hero-copy"><span id="heroEyebrow">OFFLINE TEST EDITION · VERSION 1.2.5</span><h1><span id="heroTitleOne">Your music.</span><br><em id="heroTitleTwo">Your test lab.</em></h1><p id="heroDescription">Add your own songs, videos and artwork. Everything stays on this computer.</p><button class="primary-button" id="heroAdd"><span id="heroButtonText">＋ Add your first release</span></button></div>
+        <div class="offline-badge"><i></i> Local mode <small>No internet required</small></div>
+        <div id="scrollingBanner" class="scrolling-banner" hidden><div id="scrollingBannerText"></div></div>
+      </div>
+
+      <div class="content-shell">
+        <div class="section-head"><div><span class="eyebrow">Your test catalogue</span><h2>Discover</h2></div><label class="search"><span>⌕</span><input id="searchInput" placeholder="Search title, artist or genre"></label></div>
+        <div class="filters" id="filters">
+          <button class="active" data-filter="all">All</button><button data-filter="wadadli">Wadadli</button><button data-filter="caribbean">Caribbean</button><button data-filter="world">World</button><button data-filter="ai">AI-assisted</button>
+        </div>
+        <div class="discovery-tools"><div class="genre-menu"><span id="genreMenuLabel">All genres</span><div id="genreFilters"></div></div><label class="sort-control"><span>Sort releases</span><select id="trackSort"><option value="newest">Recently added</option><option value="oldest">Oldest uploads</option><option value="views">Most viewed</option><option value="likes">Most liked</option><option value="az">Title A–Z</option></select></label></div>
+        <div id="trackGrid" class="track-grid"></div>
+      </div>
+    </section>
+
+    <section id="videosView" class="view content-shell page-view">
+      <div class="section-head"><div><span class="eyebrow">Visual premieres</span><h2>Video wall</h2></div><button class="primary-button open-add" data-type="video">＋ Add video</button></div>
+      <div id="videoGrid" class="video-grid"></div>
+    </section>
+
+    <section id="chartsView" class="view content-shell page-view">
+      <div class="section-head"><div><span class="eyebrow">One member · One like</span><h2>Verified test charts</h2></div><div class="chart-controls"><label><span>Genre ranking</span><select id="chartGenre"></select></label><div class="period-switch"><button class="active" data-period="monthly">This month</button><button data-period="alltime">All time</button></div></div></div>
+      <div class="chart-rule"><strong>How the test works</strong><p>Guest can listen, but cannot Like or Follow. Every local test member gets one Like per release. Switch members at the top to test the ranking fairly.</p></div>
+      <div id="leaderboard" class="leaderboard"></div>
+    </section>
+
+    <section id="activityView" class="view content-shell page-view activity-view">
+      <div class="section-head"><div><span class="eyebrow">Fans and artist momentum</span><h2>Side activity</h2></div><div id="myRankSummary" class="my-rank-summary"></div></div>
+      <div class="activity-columns"><section><div class="activity-title"><span class="eyebrow">Latest celebrations</span><h3>Milestone feed</h3></div><div id="milestoneFeed" class="milestone-feed"></div></section><section><div class="activity-title"><span class="eyebrow">Most active supporters</span><h3>Fan ranks</h3></div><div id="fanLeaderboard" class="fan-leaderboard"></div></section></div>
+    </section>
+
+    <section id="submitView" class="view content-shell page-view submit-view">
+      <div class="section-head"><div><span class="eyebrow">Artist submissions</span><h2>How to Submit</h2></div></div>
+      <div class="submission-intro"><p>Send a complete release package for review. ChuneSide approves every release before it appears publicly.</p><a id="submissionEmailLink" class="primary-button" href="mailto:chuneside@gmail.com">Email your submission</a></div>
+      <div id="submissionRequirements" class="requirements-grid"></div>
+      <div class="submission-note"><strong>Include with every submission</strong><p>Artist or group name, song title, genre, island or country, a short biography, social links, songwriter and producer credits, and whether AI tools were used.</p><p>Submission email: <span id="submissionEmails">chuneside@gmail.com</span></p></div>
+    </section>
+
+    <section id="adminView" class="view content-shell page-view">
+      <div class="section-head"><div><span class="eyebrow">Private control room</span><h2>Test Studio</h2></div><button class="primary-button open-add">＋ Add release</button></div>
+      <div class="studio-grid">
+        <article class="studio-card"><span>01</span><h3>Add your media</h3><p>Load MP3, WAV, M4A, MP4 or WebM files, plus optional cover artwork.</p><button class="outline-button open-add">Add song or video</button></article>
+        <article class="studio-card"><span>02</span><h3>Create test members</h3><p>Switch between profiles and confirm that each person can Like a song only once.</p><button id="addMemberStudio" class="outline-button">Create test member</button></article>
+        <article class="studio-card"><span>03</span><h3>Check the charts</h3><p>Compare current-month activity with the complete all-time ranking.</p><button class="outline-button" data-view="charts">Open rankings</button></article>
+        <article class="studio-card hero-manager"><span>04</span><h3>Hero media library</h3><p>Add images and videos one at a time, rearrange individual items, or remove only the ones you choose.</p><button id="changeHero" class="outline-button">Manage hero media</button><button id="resetHero" class="text-button">Restore original</button></article>
+        <article class="studio-card"><span>05</span><h3>Seasonal themes</h3><p>Change the site colours for Carnival, Christmas, a release campaign or any season.</p><button id="openTheme" class="outline-button">Change colours</button></article>
+        <article class="studio-card"><span>06</span><h3>Manage members</h3><p>Review names and emails, correct details, freeze access, block accounts or remove members.</p><button id="openMembers" class="outline-button">Open member list</button></article>
+        <article class="studio-card"><span>07</span><h3>Submission guide</h3><p>Edit submission emails and the audio, video, artwork and artist-picture requirements.</p><button id="openSubmissionSettings" class="outline-button">Edit instructions</button></article>
+        <article class="studio-card"><span>08</span><h3>Message display</h3><p>Control multiple announcements, timing, motion, scrolling speed, size, colours and lettering.</p><button id="openBanner" class="outline-button">Manage messages</button></article>
+        <article class="studio-card"><span>09</span><h3>Hero words &amp; logo</h3><p>Edit every hero headline and message, upload a new logo, and change its header position or size.</p><button id="openBranding" class="outline-button">Edit branding</button></article>
+        <article class="studio-card"><span>10</span><h3>Fan ranks &amp; milestones</h3><p>Review the loyalty levels, activity points and automatic artist celebrations.</p><button id="openRanks" class="outline-button">View rank system</button></article>
+      </div>
+      <div class="artist-panel"><div><span class="eyebrow">Reusable directory</span><h3>Artist database</h3><p>Add each artist once, then select their name from the dropdown whenever you add another release.</p></div><button id="addArtistStudio" class="primary-button">＋ Add artist</button></div>
+      <div id="artistList" class="artist-list"></div>
+      <div class="storage-panel"><div><strong>Offline storage</strong><p id="storageText">Your catalogue is stored privately in this browser on this computer.</p></div><button id="clearData" class="danger-button">Clear all test data</button></div>
+      <div><h3 class="library-title">Your releases</h3><div id="adminList" class="admin-list"></div></div>
+    </section>
+  </main>
+
+  <aside id="playerBar" class="player-bar hidden" aria-label="Media player">
+    <div id="miniCover" class="mini-cover">CS</div><div class="now-meta"><strong id="nowTitle">No track selected</strong><span id="nowArtist">ChuneSide</span></div>
+    <audio id="audioPlayer" controls></audio>
+    <button id="closePlayer" class="icon-button" aria-label="Close player">×</button>
+  </aside>
+
+  <dialog id="addDialog" class="modal">
+    <form id="releaseForm" method="dialog">
+      <input type="hidden" name="editId" id="releaseEditId"><div class="modal-head"><div><span class="eyebrow">Offline catalogue</span><h2 id="releaseDialogTitle">Add release</h2></div><button type="button" class="icon-button close-modal">×</button></div>
+      <div class="form-grid">
+        <label><span>Media type</span><select name="type" id="mediaType"><option value="song">Song / audio</option><option value="video">Music video</option></select></label>
+        <label><span>Title *</span><input name="title" required placeholder="Song title"></label>
+        <label><span>Artist *</span><div class="select-action"><select name="artist" id="artistSelect" required></select><button type="button" id="quickAddArtist" class="mini-action">＋ New</button></div></label>
+        <label><span>Genre</span><select name="genre" id="genreSelect"><option>Soca</option><option>Calypso</option><option>Reggae</option><option>Dancehall</option><option>Hip-Hop</option><option>Rap</option><option>R&amp;B</option><option>Gospel</option><option>Other</option></select></label>
+        <label id="otherGenreLabel" class="wide" hidden><span>Other genre *</span><input name="otherGenre" id="otherGenre" placeholder="Type the genre name"></label>
+        <label><span>Origin</span><select name="origin"><option value="wadadli">Wadadli</option><option value="caribbean">Caribbean</option><option value="world">World</option><option value="ai">AI-assisted</option></select></label>
+        <label><span>Creation</span><select name="creation"><option>Artist-made</option><option>AI-assisted</option></select></label>
+        <label class="wide"><span id="mediaFileLabel">Audio or video file *</span><input name="media" id="mediaFile" type="file" accept="audio/*,video/*" required><small id="mediaFileHelp">Use short test files first. Large videos may exceed browser storage.</small></label>
+        <label class="wide"><span>Cover artwork</span><input name="cover" type="file" accept="image/*"></label>
+      </div>
+      <div class="modal-actions"><button type="button" class="outline-button close-modal">Cancel</button><button class="primary-button" type="submit">Save to test catalogue</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="memberDialog" class="modal small-modal">
+    <form id="memberForm" method="dialog"><div class="modal-head"><div><span class="eyebrow">Local test identity</span><h2>Add member</h2></div><button type="button" class="icon-button close-member">×</button></div><label><span>Member name</span><input name="name" required maxlength="40" placeholder="Example: Nigel"></label><div class="modal-actions"><button type="button" class="outline-button close-member">Cancel</button><button type="submit" class="primary-button">Create member</button></div></form>
+  </dialog>
+
+  <dialog id="artistDialog" class="modal artist-edit-modal">
+    <form id="artistForm" method="dialog"><input type="hidden" name="editId" id="artistEditId"><div class="modal-head"><div><span class="eyebrow">Artist database</span><h2 id="artistDialogTitle">Add artist</h2></div><button type="button" class="icon-button close-artist">×</button></div><div class="profile-form"><label><span>Artist or group name *</span><input name="name" required maxlength="80" placeholder="Artist name"></label><label><span>Home territory</span><select name="origin"><option value="wadadli">Wadadli</option><option value="caribbean">Caribbean</option><option value="world">World</option><option value="ai">AI-assisted project</option></select></label><label><span>Artist picture</span><input name="picture" type="file" accept="image/*"><small>Square portrait recommended. Leave blank while editing to keep the current picture.</small></label><label><span>Primary genre</span><input name="primaryGenre" placeholder="Soca, reggae, gospel..."></label><label class="wide"><span>Biography</span><textarea name="bio" maxlength="1600" placeholder="Tell listeners the artist’s story, influences and achievements."></textarea></label><label><span>Instagram link</span><input name="instagram" type="url" placeholder="https://instagram.com/..."></label><label><span>TikTok link</span><input name="tiktok" type="url" placeholder="https://tiktok.com/@..."></label><label><span>Facebook link</span><input name="facebook" type="url" placeholder="https://facebook.com/..."></label><label><span>YouTube link</span><input name="youtube" type="url" placeholder="https://youtube.com/@..."></label><label class="wide"><span>Website or contact link</span><input name="website" type="url" placeholder="https://..."></label></div><div class="modal-actions"><button type="button" class="outline-button close-artist">Cancel</button><button type="submit" class="primary-button">Save artist</button></div></form>
+  </dialog>
+
+  <dialog id="artistCatalogDialog" class="modal artist-catalog-modal"><div class="modal-head"><div class="artist-profile-head"><div id="catalogArtistPicture" class="artist-profile-picture">CS</div><div><span class="eyebrow">Artist profile</span><h2 id="catalogArtistName"></h2><p id="catalogArtistMeta"></p><div id="catalogArtistAchievements" class="artist-achievements"></div></div></div><button type="button" class="icon-button close-catalog">×</button></div><p id="catalogArtistBio" class="artist-bio"></p><div id="catalogArtistLinks" class="artist-social-links"></div><h3>ChuneSide releases</h3><div id="catalogReleases" class="catalog-releases"></div><div class="modal-actions"><button id="catalogBlockArtist" class="danger-button">Block artist</button><button id="catalogEditArtist" class="outline-button">Edit artist</button><button class="outline-button close-catalog">Close</button></div></dialog>
+
+  <dialog id="heroDialog" class="modal hero-library-modal">
+    <form id="heroForm" method="dialog"><div class="modal-head"><div><span class="eyebrow">Homepage feature</span><h2>Hero media library</h2><p>Add one image or video at a time. Your other hero items remain untouched.</p></div><button type="button" class="icon-button close-hero">×</button></div><div class="hero-library-settings"><label><span>Add one image or video</span><input name="heroMedia" type="file" accept="image/*,video/*"><small>Maximum 10 items. Images and videos may be used together.</small></label><label><span>Motion effect</span><select name="effect"><option value="glitch">Glitch pulse</option><option value="fade">Soft fade</option><option value="slide">Cinematic slide</option><option value="static">No animation</option></select></label><label><span>Time per item</span><select name="interval"><option value="4000">4 seconds</option><option value="6000" selected>6 seconds</option><option value="8000">8 seconds</option><option value="10000">10 seconds</option><option value="15000">15 seconds</option><option value="30000">30 seconds</option></select></label></div><div class="hero-library-head"><div><strong>Current hero sequence</strong><span id="heroItemCount">0 of 10 items</span></div><small>Use the arrows to change the order. Removing one item does not affect the others.</small></div><div id="heroMediaList" class="hero-media-list"></div><div class="modal-actions"><button type="button" class="outline-button close-hero">Close</button><button type="submit" class="primary-button">Add selected item &amp; save</button></div></form>
+  </dialog>
+
+  <dialog id="brandingDialog" class="modal"><form id="brandingForm" method="dialog"><div class="modal-head"><div><span class="eyebrow">Homepage identity</span><h2>Hero words &amp; logo</h2></div><button type="button" class="icon-button close-branding">×</button></div><div class="profile-form"><label class="wide"><span>Small heading</span><input name="eyebrow" maxlength="90" required></label><label><span>Main headline</span><input name="titleOne" maxlength="55" required></label><label><span>Highlighted headline</span><input name="titleTwo" maxlength="55" required></label><label class="wide"><span>Hero description</span><textarea name="description" maxlength="320" required></textarea></label><label class="wide"><span>Hero button text</span><input name="buttonText" maxlength="60" required></label><label class="wide"><span>Upload a replacement logo</span><input name="logo" type="file" accept="image/*"><small>PNG with a transparent background is recommended. Leave blank to keep the current logo.</small></label><label><span>Logo position</span><select name="logoPosition"><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option></select></label><label><span>Logo size</span><select name="logoSize"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label></div><div class="modal-actions split-actions"><button type="button" id="restoreLogo" class="danger-button">Restore supplied logo</button><span></span><button type="button" class="outline-button close-branding">Cancel</button><button type="submit" class="primary-button">Save branding</button></div></form></dialog>
+
+  <dialog id="themeDialog" class="modal">
+    <form id="themeForm" method="dialog"><div class="modal-head"><div><span class="eyebrow">Studio appearance</span><h2>Seasonal theme</h2></div><button type="button" class="icon-button close-theme">×</button></div><label class="toggle-label visitor-theme-control"><input name="allowVisitorThemes" type="checkbox"><span><b>Let visitors choose their own theme</b><small>Turn this off to enforce your Studio colours for everyone.</small></span></label><div class="theme-presets"><button type="button" data-theme="original"><i style="--c1:#dfff00;--c2:#7d2cff;--c3:#ff4279"></i><b>ChuneSide</b><span>Original</span></button><button type="button" data-theme="carnival"><i style="--c1:#ff2f92;--c2:#ff7a00;--c3:#009dff"></i><b>Carnival</b><span>Pink · orange · blue</span></button><button type="button" data-theme="ocean"><i style="--c1:#00e5ff;--c2:#006dff;--c3:#8d5cff"></i><b>Ocean night</b><span>Cyan · blue · violet</span></button><button type="button" data-theme="christmas"><i style="--c1:#50ff88;--c2:#d92d47;--c3:#ffd45c"></i><b>Christmas</b><span>Green · red · gold</span></button></div><div class="custom-colors"><label><span>Primary</span><input type="color" name="primary" value="#dfff00"></label><label><span>Secondary</span><input type="color" name="secondary" value="#7d2cff"></label><label><span>Accent</span><input type="color" name="accent" value="#ff4279"></label></div><div class="modal-actions"><button type="button" class="outline-button close-theme">Cancel</button><button type="submit" class="primary-button">Apply custom theme</button></div></form>
+  </dialog>
+
+  <dialog id="visitorThemeDialog" class="modal small-modal"><div class="modal-head"><div><span class="eyebrow">Your display</span><h2>Choose a look</h2></div><button type="button" class="icon-button close-visitor-theme">×</button></div><p>This choice changes ChuneSide only on this device.</p><div class="visitor-theme-grid"><button data-visitor-theme="owner"><i style="--c1:#dfff00;--c2:#7d2cff"></i><b>Site default</b></button><button data-visitor-theme="original"><i style="--c1:#dfff00;--c2:#7d2cff"></i><b>Electric green</b></button><button data-visitor-theme="carnival"><i style="--c1:#ff2f92;--c2:#ff7a00"></i><b>Pink Carnival</b></button><button data-visitor-theme="sunset"><i style="--c1:#ff7a00;--c2:#ff315f"></i><b>Orange sunset</b></button><button data-visitor-theme="bright"><i style="--c1:#fff200;--c2:#00d9ff"></i><b>Extra bright</b></button><button data-visitor-theme="midnight"><i style="--c1:#8d5cff;--c2:#181d38"></i><b>Deep midnight</b></button></div></dialog>
+
+  <dialog id="signupDialog" class="modal signup-modal">
+    <div class="modal-head"><div><span class="eyebrow">ChuneSide membership</span><h2>Join the Side</h2></div><button type="button" class="icon-button close-signup">×</button></div><div class="auth-tabs"><button class="active" data-auth-tab="signup">Sign up</button><button data-auth-tab="signin">Sign in</button></div><form id="signupForm"><label><span>Display name</span><input name="name" required placeholder="Your name"></label><label><span>Email address</span><input name="email" type="email" required placeholder="name@example.com"></label><label><span>Password</span><input name="password" type="password" minlength="6" required placeholder="At least 6 characters"></label><button type="submit" class="primary-button">Create free membership</button><div class="auth-divider"><span>or</span></div><button type="button" id="googleSignup" class="google-button"><b>G</b> Continue with Google <small>Demo</small></button><p>Offline demonstration only. No information leaves this computer.</p></form><form id="signinForm" hidden><label><span>Email address</span><input name="email" type="email" required></label><label><span>Password</span><input name="password" type="password" required></label><button type="submit" class="primary-button">Sign in</button><p>Use an email membership created in this offline edition.</p></form>
+  </dialog>
+
+  <dialog id="membersDialog" class="modal management-modal"><div class="modal-head"><div><span class="eyebrow">Member controls</span><h2>Members</h2><p>Emails are visible for communication. Passwords remain protected and cannot be viewed.</p></div><button type="button" class="icon-button close-members">×</button></div><div id="memberAdminList" class="management-list"></div><div class="modal-actions"><button class="outline-button close-members">Close</button></div></dialog>
+
+  <dialog id="memberEditDialog" class="modal small-modal"><form id="memberEditForm" method="dialog"><input type="hidden" name="id"><div class="modal-head"><div><span class="eyebrow">Account override</span><h2>Edit member</h2></div><button type="button" class="icon-button close-member-edit">×</button></div><label><span>Display name</span><input name="name" required></label><label><span>Email address</span><input name="email" type="email" placeholder="No email for older test profiles"></label><label><span>Reset password (optional)</span><input name="newPassword" type="password" minlength="6" placeholder="Enter a new password"><small>The existing password cannot be viewed. Leave blank to keep it.</small></label><label><span>Account status</span><select name="status"><option value="active">Active</option><option value="frozen">Frozen — listen only</option><option value="blocked">Blocked — cannot sign in</option></select></label><div class="modal-actions"><button type="button" class="outline-button close-member-edit">Cancel</button><button class="primary-button" type="submit">Save member</button></div></form></dialog>
+
+  <dialog id="submissionSettingsDialog" class="modal"><form id="submissionSettingsForm" method="dialog"><div class="modal-head"><div><span class="eyebrow">Public instructions</span><h2>Submission guide</h2></div><button type="button" class="icon-button close-submission-settings">×</button></div><div class="profile-form"><label class="wide"><span>Submission email address(es)</span><input name="emails" required placeholder="chuneside@gmail.com, music@chuneside.com"><small>Separate multiple addresses with commas.</small></label><label><span>Audio requirement</span><input name="audio" required></label><label><span>Video requirement</span><input name="video" required></label><label><span>Album artwork requirement</span><input name="artwork" required></label><label><span>Artist picture requirement</span><input name="artistPicture" required></label></div><div class="modal-actions"><button type="button" class="outline-button close-submission-settings">Cancel</button><button type="submit" class="primary-button">Save instructions</button></div></form></dialog>
+
+  <dialog id="bannerDialog" class="modal banner-control-modal"><form id="bannerForm" method="dialog"><div class="modal-head"><div><span class="eyebrow">Homepage announcements</span><h2>Message display</h2><p>Use scrolling text or rotate messages with their own display times.</p></div><button type="button" class="icon-button close-banner">×</button></div><label class="toggle-label"><input name="enabled" type="checkbox"><span>Show the message display</span></label><div class="banner-settings-grid"><label><span>Display style</span><select name="motion"><option value="scroll">Continuous scroll</option><option value="fade">Fade in and out</option><option value="drop">Drop from the top</option><option value="rise">Rise from the bottom</option><option value="fixed">Fixed messages</option></select></label><label><span>Position</span><select name="position"><option value="bottom">Bottom of hero</option><option value="top">Top of hero</option></select></label><label><span>Text size</span><select name="textSize"><option value="14">Small · 14px</option><option value="18" selected>Medium · 18px</option><option value="24">Large · 24px</option><option value="32">Extra large · 32px</option></select></label><label><span>Letter style</span><select name="fontStyle"><option value="clean">Clean</option><option value="bold">Heavy bold</option><option value="led">LED display</option><option value="fun">Fun rounded</option></select></label><label><span>Scroll speed</span><select name="scrollSpeed"><option value="15">Fast · 15 seconds</option><option value="25">Medium · 25 seconds</option><option value="40" selected>Slow · 40 seconds</option><option value="60">Very slow · 60 seconds</option><option value="90">Extra slow · 90 seconds</option></select></label><label><span>Display height</span><select name="height"><option value="compact">Compact</option><option value="standard" selected>Standard</option><option value="tall">Tall</option></select></label><label><span>Background colour</span><input name="background" type="color" value="#dfff00"></label><label><span>Text colour</span><input name="textColor" type="color" value="#08090b"></label></div><div class="message-editor"><div class="message-editor-head"><strong>Messages</strong><span>Each message can stay from 1 to 300 seconds.</span></div><div class="message-row"><span>1</span><input name="message1" maxlength="240" placeholder="First announcement"><label>Seconds <input name="duration1" type="number" min="1" max="300" value="5"></label></div><div class="message-row"><span>2</span><input name="message2" maxlength="240" placeholder="Second announcement"><label>Seconds <input name="duration2" type="number" min="1" max="300" value="10"></label></div><div class="message-row"><span>3</span><input name="message3" maxlength="240" placeholder="Optional third message"><label>Seconds <input name="duration3" type="number" min="1" max="300" value="15"></label></div><div class="message-row"><span>4</span><input name="message4" maxlength="240" placeholder="Optional fourth message"><label>Seconds <input name="duration4" type="number" min="1" max="300" value="30"></label></div><div class="message-row"><span>5</span><input name="message5" maxlength="240" placeholder="Optional fifth message"><label>Seconds <input name="duration5" type="number" min="1" max="300" value="60"></label></div><div class="message-row"><span>6</span><input name="message6" maxlength="240" placeholder="Optional sixth message"><label>Seconds <input name="duration6" type="number" min="1" max="300" value="60"></label></div></div><div class="modal-actions"><button type="button" class="outline-button close-banner">Cancel</button><button type="submit" class="primary-button">Save message display</button></div></form></dialog>
+
+  <dialog id="videoDialog" class="video-modal"><button id="closeVideo" class="icon-button">×</button><video id="videoPlayer" controls autoplay></video><div><strong id="videoTitle"></strong><span id="videoArtist"></span></div></dialog>
+  <dialog id="guestDialog" class="modal small-modal"><div class="modal-head"><div><span class="eyebrow">Members only</span><h2>Make it count</h2></div><button type="button" class="icon-button close-guest">×</button></div><p>Choose or create a test member first. Guests can listen, but their Likes and Follows do not affect rankings.</p><button id="guestCreate" class="primary-button">Create test member</button></dialog>
+
+  <dialog id="ranksDialog" class="modal ranks-modal"><div class="modal-head"><div><span class="eyebrow">Lifetime fan recognition</span><h2>Fan rank system</h2><p>Ranks never reset. Visits, listening and support build a member’s standing over time.</p></div><button type="button" class="icon-button close-ranks">×</button></div><div id="rankGuide" class="rank-guide"></div><div class="points-guide"><strong>How points are earned</strong><span>Visit 5</span><span>Active minute 1</span><span>Play 2</span><span>Like 5</span><span>Follow 8</span><span>Share 10</span><span>Referral 50 <small>hosted edition</small></span></div><div class="modal-actions"><button class="outline-button close-ranks">Close</button></div></dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <aside id="achievementPopup" class="achievement-popup" hidden aria-live="polite"></aside>
+</body>
+</html>

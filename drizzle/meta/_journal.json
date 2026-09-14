@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1788551926764,
+      "tag": "0000_romantic_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788808345547,
+      "tag": "0001_feature_control_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788809092305,
+      "tag": "0002_account_controls_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788818176690,
+      "tag": "0003_artist_catalog_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788821563155,
+      "tag": "0004_release_review_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788822928231,
+      "tag": "0005_release_media_foundation",
+      "breakpoints": true
+    }
+  ]
+}
