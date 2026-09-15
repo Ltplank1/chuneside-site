@@ -3,8 +3,8 @@
 import { FormEvent, useState } from "react";
 import { ArrowRight, KeyRound, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { PasswordInput } from "../password-input";
 
 export function UpdatePasswordForm() {
   const [error, setError] = useState("");
@@ -31,5 +31,5 @@ export function UpdatePasswordForm() {
     }
   }
 
-  return <form className="supabase-auth-form" onSubmit={submit}><label><span>New password</span><Input name="password" type="password" autoComplete="new-password" minLength={8} required /></label><label><span>Confirm password</span><Input name="passwordConfirmation" type="password" autoComplete="new-password" minLength={8} required /></label><Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="catalog-spinner" /> : <KeyRound />} Update password <ArrowRight /></Button>{message && <p className="auth-success" role="status">{message}</p>}{error && <p className="auth-error" role="alert">{error}</p>}</form>;
+  return <form className="supabase-auth-form" onSubmit={submit}><label><span>New password</span><PasswordInput name="password" autoComplete="new-password" minLength={8} required /></label><label><span>Confirm password</span><PasswordInput name="passwordConfirmation" autoComplete="new-password" minLength={8} required /></label><Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="catalog-spinner" /> : <KeyRound />} Update password <ArrowRight /></Button>{message && <p className="auth-success" role="status">{message}</p>}{error && <p className="auth-error" role="alert">{error}</p>}</form>;
 }

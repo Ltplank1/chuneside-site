@@ -196,6 +196,19 @@ test("routes public member actions through ChuneSide authentication", async () =
   assert.doesNotMatch(home, /Sign in with ChatGPT/);
 });
 
+test("offers accessible password visibility controls across ChuneSide authentication", async () => {
+  const [passwordInput, authForm, updateForm] = await Promise.all([
+    readFile(path.join(root, "app", "auth", "password-input.tsx"), "utf8"),
+    readFile(path.join(root, "app", "auth", "auth-form.tsx"), "utf8"),
+    readFile(path.join(root, "app", "auth", "update-password", "update-password-form.tsx"), "utf8"),
+  ]);
+
+  assert.match(passwordInput, /EyeOff/);
+  assert.match(passwordInput, /aria-label=\{visible \? "Hide password" : "Show password"\}/);
+  assert.match(authForm, /<PasswordInput name="password"/);
+  assert.match(updateForm, /<PasswordInput name="password"/);
+});
+
 test("registers configurable admin-test controls for Stage, AI limits, and the news bar", async () => {
   const { featureFlagDefinitions, defaultPublicFeatureSnapshot } = await vite.ssrLoadModule("/lib/feature-flags.ts");
   const byKey = new Map(featureFlagDefinitions.map((flag) => [flag.key, flag]));
