@@ -120,7 +120,7 @@ export function ReviewQueueClient({ adminAccessSource, mediaRequired, initialRev
               </div>
               <div className="review-media">
                 {release.media.map((media) => media.kind === "cover" ? (
-                  <div className="review-cover" key={media.id}><Image src={`/api/media/${media.id}`} alt={`${release.title} submitted cover`} width={96} height={96} unoptimized /><span>{media.originalName}<small>{formatBytes(media.sizeBytes)}</small></span></div>
+                  <div className="review-cover" key={media.id}><a href={`/api/media/${media.id}`} target="_blank" rel="noreferrer" aria-label={`Open ${release.title} submitted cover`}><Image src={`/api/media/${media.id}`} alt={`${release.title} submitted cover`} width={96} height={96} unoptimized /></a><span>{media.originalName}<small>{formatBytes(media.sizeBytes)}</small></span></div>
                 ) : (
                   <div className="review-audio" key={media.id}><span>{media.originalName}<small>{formatBytes(media.sizeBytes)}</small></span><audio src={`/api/media/${media.id}`} controls preload="metadata" /></div>
                 ))}
