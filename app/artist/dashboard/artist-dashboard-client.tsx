@@ -159,12 +159,28 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
     setBusy(true);
     setError("");
     for (const item of files) {
-      const payload = new FormData();
-      payload.set("releaseId", releaseId);
-      payload.set("kind", item.kind);
-      payload.set("file", item.file);
-      const response = await fetch("/api/artist/media", { method: "POST", body: payload });
-      const data = await response.json() as { media?: WorkspaceMedia; error?: string };
+      // Keep release files out of multipart form data. Vinext reserves multipart POST
+      // requests for Server Actions and applies its small action-body limit before an
+      // API route can receive the file. The endpoint still authenticates every upload
+      // and streams the bytes privately to R2.
+      let response: Response;
+      try {
+        response = await fetch("/api/artist/media", {
+          method: "POST",
+          headers: {
+            "content-type": item.file.type,
+            "x-chuneside-release-id": releaseId,
+            "x-chuneside-media-kind": item.kind,
+            "x-chuneside-original-name": encodeURIComponent(item.file.name),
+          },
+          body: item.file,
+        });
+      } catch {
+        setError(`${item.kind} upload could not reach ChuneSide. Please try again.`);
+        setBusy(false);
+        return;
+      }
+      const data = await response.json().catch(() => ({})) as { media?: WorkspaceMedia; error?: string };
       if (!response.ok || !data.media) {
         setError(data.error ?? `${item.kind} upload failed.`);
         setBusy(false);
