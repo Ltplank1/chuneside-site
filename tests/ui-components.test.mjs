@@ -188,6 +188,14 @@ test("does not treat the private Sites viewer identity as production ChuneSide a
   assert.match(headers, /if \(supabaseConfigured\(\)\) return \{ id: null, email: null, displayName: null, fullName: null \}/);
 });
 
+test("routes public member actions through ChuneSide authentication", async () => {
+  const home = await readFile(path.join(root, "app", "page.tsx"), "utf8");
+
+  assert.match(home, /const memberSignInPath = "\/auth\/sign-in\?returnTo=%2F%23charts"/);
+  assert.match(home, /Sign in or create an account/);
+  assert.doesNotMatch(home, /Sign in with ChatGPT/);
+});
+
 test("registers configurable admin-test controls for Stage, AI limits, and the news bar", async () => {
   const { featureFlagDefinitions, defaultPublicFeatureSnapshot } = await vite.ssrLoadModule("/lib/feature-flags.ts");
   const byKey = new Map(featureFlagDefinitions.map((flag) => [flag.key, flag]));
