@@ -65,12 +65,16 @@ export async function POST(request: Request) {
   const objectKey = `releases/${releaseId}/${mediaKind}/${id}.${extensions[contentType]}`;
   const now = new Date();
   const bucket = getMediaBucket();
+  const fixedLengthStream = createFixedLengthStream(contentLength);
+  if (!fixedLengthStream) return NextResponse.json({ error: "The upload did not include a valid file length." }, { status: 400 });
 
   try {
-    await bucket.put(objectKey, prepared.stream, {
+    const r2Write = bucket.put(objectKey, fixedLengthStream.readable, {
       httpMetadata: { contentType },
       customMetadata: { releaseId, uploaderMemberId: access.user.id, kind: mediaKind },
     });
+    await prepared.stream.pipeTo(fixedLengthStream.writable);
+    await r2Write;
   } catch (error) {
     console.error("Artist media R2 write failed", { releaseId, kind: mediaKind, sizeBytes: prepared.size, error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "The media file could not be stored. Please try again." }, { status: 503 });
@@ -173,4 +177,15 @@ function safeOriginalName(value: string | null) {
   } catch {
     return "";
   }
+}
+
+function createFixedLengthStream(length: number) {
+  if (!Number.isSafeInteger(length) || length < 1) return null;
+  const FixedLengthStream = (globalThis as unknown as {
+    FixedLengthStream?: new (size: number) => {
+      readable: ReadableStream<Uint8Array>;
+      writable: WritableStream<Uint8Array>;
+    };
+  }).FixedLengthStream;
+  return FixedLengthStream ? new FixedLengthStream(length) : null;
 }
