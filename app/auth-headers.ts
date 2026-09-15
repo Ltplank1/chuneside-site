@@ -34,9 +34,11 @@ export function readAuthenticatedHeaderUser(requestHeaders: Headers | ReadonlyHe
 }
 
 export async function getAuthenticatedUser(): Promise<AuthenticatedHeaderUser> {
-  const { getSupabaseUser } = await import("@/lib/supabase/server");
+  const { getSupabaseUser, supabaseConfigured } = await import("@/lib/supabase/server");
   const supabaseUser = await getSupabaseUser();
   if (supabaseUser) return supabaseUser;
+  // The private Sites viewer can identify a host account, but it is never a ChuneSide session once Supabase Auth is configured.
+  if (supabaseConfigured()) return { id: null, email: null, displayName: null, fullName: null };
   return readAuthenticatedHeaderUser(await import("next/headers").then(({ headers }) => headers()));
 }
 

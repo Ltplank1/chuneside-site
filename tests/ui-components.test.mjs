@@ -182,6 +182,12 @@ test("validates artist follows against public D1 artist profiles", async () => {
   assert.match(route, /That artist is not available to follow/);
 });
 
+test("does not treat the private Sites viewer identity as production ChuneSide authentication", async () => {
+  const headers = await readFile(path.join(root, "app", "auth-headers.ts"), "utf8");
+
+  assert.match(headers, /if \(supabaseConfigured\(\)\) return \{ id: null, email: null, displayName: null, fullName: null \}/);
+});
+
 test("registers configurable admin-test controls for Stage, AI limits, and the news bar", async () => {
   const { featureFlagDefinitions, defaultPublicFeatureSnapshot } = await vite.ssrLoadModule("/lib/feature-flags.ts");
   const byKey = new Map(featureFlagDefinitions.map((flag) => [flag.key, flag]));
