@@ -174,6 +174,14 @@ test("loads the public Supabase browser configuration from the production runtim
   assert.doesNotMatch(route, /SERVICE_ROLE|R2_|SMTP|ADMIN_EMAILS/);
 });
 
+test("validates artist follows against public D1 artist profiles", async () => {
+  const route = await readFile(path.join(root, "app", "api", "member-state", "route.ts"), "utf8");
+
+  assert.doesNotMatch(route, /validArtists/);
+  assert.match(route, /artistProfiles\.visibility, "public"/);
+  assert.match(route, /That artist is not available to follow/);
+});
+
 test("registers configurable admin-test controls for Stage, AI limits, and the news bar", async () => {
   const { featureFlagDefinitions, defaultPublicFeatureSnapshot } = await vite.ssrLoadModule("/lib/feature-flags.ts");
   const byKey = new Map(featureFlagDefinitions.map((flag) => [flag.key, flag]));

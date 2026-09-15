@@ -2,14 +2,12 @@ import { NextResponse } from "next/server";
 import { and, count, eq, gte } from "drizzle-orm";
 import { getCurrentMemberUser } from "@/app/member-auth";
 import { getDb } from "@/db";
-import { artistFollows, members, songLikes } from "@/db/schema";
+import { artistFollows, artistProfiles, members, songLikes } from "@/db/schema";
 import { isFeatureAvailable } from "@/lib/feature-flags";
 
 export const dynamic = "force-dynamic";
 
 const validTracks = new Set([1, 2, 3, 4, 5, 6, 7, 8]);
-const validArtists = new Set(["Kaia Rivers", "Marlon Tide", "Nia Vale", "Kruz & The Bay", "Elijah Stone", "Lani June", "Mika + Machine", "Nova Palm"]);
-
 type Member = { id: string; email: string; displayName: string };
 
 async function stateFor(member: Member | null) {
@@ -63,7 +61,12 @@ export async function POST(request: Request) {
       const existing = await db.select({ trackId: songLikes.trackId }).from(songLikes).where(and(eq(songLikes.memberId, member.id), eq(songLikes.trackId, body.trackId))).limit(1);
       if (existing.length) await db.delete(songLikes).where(and(eq(songLikes.memberId, member.id), eq(songLikes.trackId, body.trackId)));
       else await db.insert(songLikes).values({ memberId: member.id, trackId: body.trackId, createdAt: now });
-    } else if (body.action === "follow" && body.artist && validArtists.has(body.artist)) {
+    } else if (body.action === "follow" && body.artist) {
+      const [artist] = await db.select({ id: artistProfiles.id }).from(artistProfiles).where(and(
+        eq(artistProfiles.stageName, body.artist),
+        eq(artistProfiles.visibility, "public"),
+      )).limit(1);
+      if (!artist) return NextResponse.json({ error: "That artist is not available to follow." }, { status: 404 });
       const existing = await db.select({ artist: artistFollows.artist }).from(artistFollows).where(and(eq(artistFollows.memberId, member.id), eq(artistFollows.artist, body.artist))).limit(1);
       if (existing.length) await db.delete(artistFollows).where(and(eq(artistFollows.memberId, member.id), eq(artistFollows.artist, body.artist)));
       else await db.insert(artistFollows).values({ memberId: member.id, artist: body.artist, createdAt: now });
