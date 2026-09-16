@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Bot, BriefcaseBusiness, Disc3, Edit3, FileAudio, ImageIcon, LoaderCircle, PlaySquare, Plus, Send, Upload, Video } from "lucide-react";
+import { BadgeCheck, Bot, BriefcaseBusiness, Disc3, Edit3, FileAudio, ImageIcon, LoaderCircle, PlaySquare, Plus, Send, Trash2, Upload, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -207,6 +207,23 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
     setMediaOpen(false);
   }
 
+  async function deleteRelease(release: WorkspaceRelease) {
+    if (!window.confirm(`Delete "${release.title}" permanently? This removes it from ChuneSide and cannot be undone.`)) return;
+    setBusy(true);
+    setError("");
+    const response = await fetch(`/api/artist/releases/${release.id}`, { method: "DELETE" });
+    const data = await response.json().catch(() => ({})) as { error?: string };
+    if (!response.ok) {
+      setError(data.error ?? "The release could not be deleted.");
+      setBusy(false);
+      return;
+    }
+    setReleaseRows((current) => current.filter((item) => item.id !== release.id));
+    setMediaRows((current) => current.filter((item) => item.releaseId !== release.id));
+    setMessage(release.title + " was deleted from ChuneSide.");
+    setBusy(false);
+  }
+
   async function uploadProfileMedia(event: FormEvent<HTMLInputElement>, artistProfileId: string, kind: "profile" | "cover") {
     const file = event.currentTarget.files?.[0];
     event.currentTarget.value = "";
@@ -397,6 +414,7 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
                   <small className="workspace-media-state"><span><FileAudio /> {mediaRows.some((media) => media.releaseId === release.id && media.kind === "audio") ? "Audio ready" : "No audio"}</span><span><ImageIcon /> {mediaRows.some((media) => media.releaseId === release.id && media.kind === "cover") ? "Cover ready" : "No cover"}</span><span><Video /> {mediaRows.some((media) => media.releaseId === release.id && media.kind === "video") ? "Video ready" : "No video"}</span></small>
                   <strong className={"workspace-status " + release.approvalStatus}>{release.approvalStatus}</strong>
                   {release.approvalStatus === "rejected" && <Button type="button" variant="outline" size="sm" className="workspace-resubmit-button" onClick={() => { setError(""); setReleaseEditOpen(release); }}><Edit3 /> Correct</Button>}
+                  <Button type="button" variant="outline" size="sm" className="workspace-resubmit-button workspace-delete-button" disabled={busy} onClick={() => deleteRelease(release)}><Trash2 /> Delete</Button>
                 </article>
               ))}
               {!releaseRows.length && <div className="catalog-empty"><Disc3 /><p>No releases have been submitted from this workspace.</p></div>}

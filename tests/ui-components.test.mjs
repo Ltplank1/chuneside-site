@@ -167,6 +167,8 @@ test("keeps release metadata inputs searchable and duration compatible", async (
   assert.match(dashboard, /name="durationSecondsPart"/);
   assert.match(dashboard, /x-chuneside-duration-seconds/);
   assert.match(dashboard, /value="Other"/);
+  assert.match(dashboard, /method: "DELETE"/);
+  assert.match(dashboard, /workspace-delete-button/);
   assert.match(options, /commonCountries/);
   assert.match(options, /United States/);
 });

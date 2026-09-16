@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { adminAuditLogs, artistProfiles, releases } from "@/db/schema";
+import { adminAuditLogs, artistProfiles, releaseMedia, releases } from "@/db/schema";
 import { aiClassifications, creationTypeFromAiClassification, type AiClassification } from "@/lib/ai-upload-policy";
 import { getArtistWorkspaceAccess } from "@/lib/artist-access";
+import { getMediaBucket } from "@/lib/media-storage";
 
 export const dynamic = "force-dynamic";
 
@@ -82,5 +83,35 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ re
     return NextResponse.json({ release: updatedRelease });
   } catch {
     return NextResponse.json({ error: "That release slug is already in use." }, { status: 409 });
+  }
+}
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ releaseId: string }> }) {
+  const access = await getArtistWorkspaceAccess();
+  if (access.status === "anonymous") return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  if (access.status !== "allowed") return NextResponse.json({ error: "Artist workspace access required." }, { status: 403 });
+
+  const { releaseId } = await params;
+  const db = getDb();
+  const [release] = await db.select({ id: releases.id, title: releases.title }).from(releases).innerJoin(artistProfiles, eq(releases.artistProfileId, artistProfiles.id)).where(and(
+    eq(releases.id, releaseId),
+    eq(artistProfiles.ownerMemberId, access.user.id),
+  )).limit(1);
+  if (!release) return NextResponse.json({ error: "That release is not linked to your artist account." }, { status: 403 });
+
+  const media = await db.select({ id: releaseMedia.id, objectKey: releaseMedia.objectKey }).from(releaseMedia).where(eq(releaseMedia.releaseId, releaseId));
+  try {
+    const bucket = getMediaBucket();
+    await Promise.all(media.map((item) => bucket.delete(item.objectKey)));
+    await db.insert(adminAuditLogs).values({
+      id: randomUUID(), actorId: access.user.id, actorEmail: access.user.email,
+      action: "artist.release_delete", entityType: "release", entityId: releaseId,
+      details: JSON.stringify({ title: release.title, deletedMediaIds: media.map((item) => item.id) }),
+      createdAt: new Date(),
+    });
+    await db.delete(releases).where(eq(releases.id, releaseId));
+    return NextResponse.json({ deleted: true, releaseId });
+  } catch {
+    return NextResponse.json({ error: "The release could not be deleted. Please try again." }, { status: 500 });
   }
 }
