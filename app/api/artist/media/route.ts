@@ -38,6 +38,7 @@ export async function POST(request: Request) {
   const releaseId = request.headers.get("x-chuneside-release-id");
   const kind = request.headers.get("x-chuneside-media-kind");
   const radioReadyConfirmed = request.headers.get("x-chuneside-radio-ready-confirmed") === "true";
+  const detectedDuration = Number(request.headers.get("x-chuneside-duration-seconds") ?? "");
   const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
   const originalName = safeOriginalName(request.headers.get("x-chuneside-original-name"));
   if (!releaseId || !["audio", "cover", "video"].includes(String(kind)) || !request.body) {
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
   if (!radioReadyConfirmed) {
     return NextResponse.json({ error: "Confirm that this is the clean radio-ready version before uploading." }, { status: 400 });
   }
+  const durationSeconds = Number.isInteger(detectedDuration) && detectedDuration > 0 && detectedDuration <= 86400 ? detectedDuration : null;
 
   const mediaKind = kind as MediaKind;
   const contentLength = Number(request.headers.get("content-length") ?? 0);
@@ -112,6 +114,7 @@ export async function POST(request: Request) {
     await db.update(releases).set({
       explicitStatus: "clean",
       radioReadyConfirmed: true,
+      ...(kind === "audio" && durationSeconds ? { durationSeconds } : {}),
       approvalStatus: "pending",
       reviewNote: null,
       reviewedAt: null,

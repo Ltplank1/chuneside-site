@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { demoTracks, type PublicTrack } from "@/lib/public-catalog";
+import { demoTracks, parseTrackDuration, type PublicTrack } from "@/lib/public-catalog";
 
 const videos = [
   { eyebrow: "ChuneSide premiere · 268", artist: "Kaia Rivers", title: "Golden Hour", note: "Featured music video", tint: "hero-a", trackId: 1 },
@@ -67,11 +67,6 @@ function Cover({ track, large = false }: { track: PublicTrack; large?: boolean }
     <span className={`cover-mark ${large ? "cover-mark-large" : ""}`}>{track.mark}</span>
     {track.creation === "AI-assisted" && <span className="ai-corner"><Bot /> AI</span>}
   </div>;
-}
-
-function durationSeconds(value: string) {
-  const [minutes, seconds] = value.split(":").map(Number);
-  return (minutes || 0) * 60 + (seconds || 0);
 }
 
 function formatPlayerTime(seconds: number) {
@@ -206,7 +201,7 @@ export default function Home() {
   const discoveryFilterCount = Number(Boolean(query.trim())) + Number(lane !== "all") + Number(activeGenre !== "All") + Number(activeRegion !== "All") + Number(sortMode !== "curated");
 
   const active = tracks.find((track) => track.id === activeId) ?? tracks[0] ?? null;
-  const activeDuration = active ? durationSeconds(active.duration) : 0;
+  const activeDuration = active ? parseTrackDuration(active.duration) : 0;
   const hero = videos[heroIndex];
   const featureOn = (key: string, fallback = true) => features?.[key]?.available ?? fallback;
   const songRankingsOn = featureOn("song_rankings");

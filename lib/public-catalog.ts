@@ -32,8 +32,4 @@ export const demoTracks: PublicTrack[] = [
   { id: 8, title: "Satellite Riddim", artist: "Nova Palm", artistSlug: "nova-palm", genre: "Fusion", origin: "Guest Frequency", lane: "world", creation: "AI-assisted", mood: "Global bass experiment", duration: "3:26", audioUrl: null, coverImageUrl: null, colors: "from-[#7d2cff] via-[#ff2fa6] to-[#241044]", mark: "NP", loves: 121, likes: 76, fans: 31 },
 ];
 
-export function formatTrackDuration(totalSeconds: number | null) {
-  if (!totalSeconds || totalSeconds < 0) return "0:00";
-  const minutes = Math.floor(totalSeconds / 60);
-  return minutes + ":" + String(totalSeconds % 60).padStart(2, "0");
-}
+export { formatTrackDuration, parseTrackDuration } from "./submission-options";

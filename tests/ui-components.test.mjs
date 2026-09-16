@@ -107,7 +107,7 @@ test("renders sidebar skeletons deterministically", async () => {
 });
 
 test("keeps the public catalogue fallback complete and formats duration", async () => {
-  const { demoTracks, formatTrackDuration } = await vite.ssrLoadModule(
+  const { demoTracks, formatTrackDuration, parseTrackDuration } = await vite.ssrLoadModule(
     "/lib/public-catalog.ts",
   );
 
@@ -115,6 +115,9 @@ test("keeps the public catalogue fallback complete and formats duration", async 
   assert.equal(new Set(demoTracks.map((track) => track.id)).size, 8);
   assert.equal(formatTrackDuration(198), "3:18");
   assert.equal(formatTrackDuration(null), "0:00");
+  assert.equal(parseTrackDuration("004"), 4);
+  assert.equal(formatTrackDuration(parseTrackDuration("004")), "0:04");
+  assert.equal(parseTrackDuration("3:15"), 195);
 });
 
 test("provides a stable artist slug for every demo track", async () => {
@@ -152,6 +155,19 @@ test("keeps radio-ready confirmation and platform links in the artist workflow",
   assert.match(reviewPage, /radioReadyConfirmed: releases\.radioReadyConfirmed/);
   assert.match(reviewClient, /Radio-ready confirmed/);
   assert.match(mediaRoute, /Confirm that this is the clean radio-ready version before uploading/);
+});
+
+test("keeps release metadata inputs searchable and duration compatible", async () => {
+  const dashboard = await readFile(path.join(root, "app", "artist", "dashboard", "artist-dashboard-client.tsx"), "utf8");
+  const options = await readFile(path.join(root, "lib", "submission-options.ts"), "utf8");
+
+  assert.match(dashboard, /list=\{`\$\{name\}-presets`\}/);
+  assert.match(dashboard, /name=\{`\$\{name\}Other`\}/);
+  assert.match(dashboard, /name="durationMinutes"/);
+  assert.match(dashboard, /name="durationSecondsPart"/);
+  assert.match(dashboard, /x-chuneside-duration-seconds/);
+  assert.match(dashboard, /value="Other"/);
+  assert.match(options, /Intl\.supportedValuesOf\("region"\)/);
 });
 
 test("validates uploaded media by size, type, and file signature", async () => {

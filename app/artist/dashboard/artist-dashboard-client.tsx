@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { commonCountries, countryOptions, genrePresets, moodPresets } from "@/lib/submission-options";
 
 type WorkspaceProfile = {
   id: string;
@@ -124,13 +125,13 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
         title: form.get("title"),
         slug: form.get("slug"),
         featuringArtist: form.get("featuringArtist"),
-        genre: form.get("genre"),
+        genre: presetValue(form, "genre"),
         region: form.get("region"),
         discoveryLane: form.get("discoveryLane"),
         creationType: form.get("creationType"),
         aiClassification: form.get("aiClassification"),
-        mood: form.get("mood"),
-        durationSeconds: form.get("durationSeconds") ? Number(form.get("durationSeconds")) : null,
+        mood: presetValue(form, "mood"),
+        durationSeconds: durationFromForm(form),
         explicitStatus: "clean",
         rightsConfirmed: form.get("rightsConfirmed") === "on",
         aiDisclosure: form.get("aiDisclosure"),
@@ -169,7 +170,9 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
       // API route can receive the file. The endpoint still authenticates every upload
       // and streams the bytes privately to R2.
       let response: Response;
+      let detectedDuration: number | null = null;
       try {
+        detectedDuration = item.kind === "audio" ? await detectAudioDuration(item.file) : null;
         response = await fetch("/api/artist/media", {
           method: "POST",
           headers: {
@@ -178,6 +181,7 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
             "x-chuneside-media-kind": item.kind,
             "x-chuneside-original-name": encodeURIComponent(item.file.name),
             "x-chuneside-radio-ready-confirmed": "true",
+            ...(detectedDuration ? { "x-chuneside-duration-seconds": String(detectedDuration) } : {}),
           },
           body: item.file,
         });
@@ -193,6 +197,9 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
         return;
       }
       setMediaRows((current) => [...current.filter((media) => media.releaseId !== releaseId || media.kind !== item.kind), data.media as WorkspaceMedia]);
+      if (item.kind === "audio") {
+        if (detectedDuration) setReleaseRows((current) => current.map((release) => release.id === releaseId ? { ...release, durationSeconds: detectedDuration } : release));
+      }
     }
     setReleaseRows((current) => current.map((release) => release.id === releaseId ? { ...release, approvalStatus: "pending", reviewNote: null } : release));
     setMessage("Release media uploaded and returned to the review queue.");
@@ -236,12 +243,12 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
         title: form.get("title"),
         slug: form.get("slug"),
         featuringArtist: form.get("featuringArtist"),
-        genre: form.get("genre"),
+        genre: presetValue(form, "genre"),
         region: form.get("region"),
         discoveryLane: form.get("discoveryLane"),
         aiClassification: form.get("aiClassification"),
-        mood: form.get("mood"),
-        durationSeconds: form.get("durationSeconds") ? Number(form.get("durationSeconds")) : null,
+        mood: presetValue(form, "mood"),
+        durationSeconds: durationFromForm(form),
         explicitStatus: "clean",
         rightsConfirmed: form.get("rightsConfirmed") === "on",
         aiDisclosure: form.get("aiDisclosure"),
@@ -486,13 +493,13 @@ function ReleaseDialog({ open, profiles, busy, error, onClose, onSubmit }: {
             <Field label="Release title"><Input name="title" required maxLength={160} /></Field>
             <Field label="Release slug"><Input name="slug" required maxLength={80} placeholder="release-title" /></Field>
             <Field label="Featuring artist"><Input name="featuringArtist" maxLength={160} /></Field>
-            <Field label="Genre"><Input name="genre" required maxLength={80} /></Field>
-            <Field label="Country or region"><Input name="region" required maxLength={120} /></Field>
+            <PresetField label="Genre" name="genre" presets={genrePresets} required />
+            <CountryField label="Country or region" name="region" required />
             <Field label="Discovery lane"><Select name="discoveryLane" options={["wadadli", "caribbean", "ai", "world"]} /></Field>
             <Field label="Creation disclosure"><Select name="creationType" options={[["artist_made", "Artist-made"], ["ai_assisted", "AI-assisted"]]} /></Field>
             <Field label="AI classification"><Select name="aiClassification" options={[["human_created", "Human-created"], ["ai_assisted", "AI-assisted"], ["primarily_ai_generated", "Primarily AI-generated"], ["classification_pending", "Classification pending"]]} /></Field>
-            <Field label="Mood"><Input name="mood" maxLength={120} /></Field>
-            <Field label="Duration in seconds"><Input name="durationSeconds" type="number" min={1} max={86400} /></Field>
+            <PresetField label="Mood" name="mood" presets={moodPresets} />
+            <DurationFields />
             <Field label="AI use disclosure"><Textarea name="aiDisclosure" maxLength={1000} placeholder="Required for AI-assisted releases: describe the tools used and what they contributed." /></Field>
             <Field label="Submission notes"><Textarea name="submissionNotes" maxLength={1000} placeholder="Optional context for the ChuneSide review team." /></Field>
           </div>
@@ -514,12 +521,12 @@ function ReleaseCorrectionDialog({ release, busy, error, onClose, onSubmit }: { 
           <Field label="Release title"><Input name="title" required maxLength={160} defaultValue={release.title} /></Field>
           <Field label="Release slug"><Input name="slug" required maxLength={80} defaultValue={release.slug} /></Field>
           <Field label="Featuring artist"><Input name="featuringArtist" maxLength={160} defaultValue={release.featuringArtist ?? ""} /></Field>
-          <Field label="Genre"><Input name="genre" required maxLength={80} defaultValue={release.genre} /></Field>
-          <Field label="Country or region"><Input name="region" required maxLength={120} defaultValue={release.region} /></Field>
+          <PresetField label="Genre" name="genre" presets={genrePresets} required defaultValue={release.genre} />
+          <CountryField label="Country or region" name="region" required defaultValue={release.region} />
           <Field label="Discovery lane"><Select name="discoveryLane" options={["wadadli", "caribbean", "ai", "world"]} defaultValue={release.discoveryLane} /></Field>
           <Field label="AI classification"><Select name="aiClassification" options={[["human_created", "Human-created"], ["ai_assisted", "AI-assisted"], ["primarily_ai_generated", "Primarily AI-generated"], ["classification_pending", "Classification pending"]]} defaultValue={release.aiClassification} /></Field>
-          <Field label="Mood"><Input name="mood" maxLength={120} defaultValue={release.mood ?? ""} /></Field>
-          <Field label="Duration in seconds"><Input name="durationSeconds" type="number" min={1} max={86400} defaultValue={release.durationSeconds ?? ""} /></Field>
+          <PresetField label="Mood" name="mood" presets={moodPresets} defaultValue={release.mood ?? ""} />
+          <DurationFields defaultValue={release.durationSeconds} />
           <Field label="AI use disclosure"><Textarea name="aiDisclosure" maxLength={1000} defaultValue={release.aiDisclosure ?? ""} /></Field>
           <Field label="Submission notes"><Textarea name="submissionNotes" maxLength={1000} defaultValue={release.submissionNotes ?? ""} /></Field>
         </div>
@@ -563,11 +570,86 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <label className="catalog-field"><span>{label}</span>{children}</label>;
 }
 
+function PresetField({ label, name, presets, required = false, defaultValue = "" }: { label: string; name: string; presets: readonly string[]; required?: boolean; defaultValue?: string }) {
+  const isKnown = presets.includes(defaultValue);
+  const [choice, setChoice] = useState(isKnown ? defaultValue : defaultValue ? "Other" : "");
+  const [other, setOther] = useState(isKnown ? "" : defaultValue);
+  return <Field label={label}>
+    <Input name={name} list={`${name}-presets`} required={required} maxLength={120} value={choice} placeholder="Search or choose a preset" onChange={(event) => setChoice(event.target.value)} />
+    <datalist id={`${name}-presets`}>{presets.map((preset) => <option value={preset} key={preset} />)}<option value="Other" /></datalist>
+    {choice === "Other" && <Input name={`${name}Other`} required={required} maxLength={120} value={other} placeholder={`Enter ${label.toLowerCase()}`} onChange={(event) => setOther(event.target.value)} />}
+  </Field>;
+}
+
+function CountryField({ label, name, required = false, defaultValue = "" }: { label: string; name: string; required?: boolean; defaultValue?: string }) {
+  const [options] = useState(() => countryOptions());
+  return <Field label={label}>
+    <Input name={name} list={`${name}-options`} required={required} maxLength={120} defaultValue={defaultValue} placeholder="Search countries" />
+    <datalist id={`${name}-options`}>{[...commonCountries, ...options].filter((value, index, all) => all.indexOf(value) === index).map((country) => <option value={country} key={country} />)}</datalist>
+  </Field>;
+}
+
+function DurationFields({ defaultValue = null }: { defaultValue?: number | null }) {
+  const initial = Math.max(0, defaultValue ?? 0);
+  const [minutes, setMinutes] = useState(String(Math.floor(initial / 60)));
+  const [seconds, setSeconds] = useState(String(initial % 60).padStart(2, "0"));
+  const total = (Number(minutes) || 0) * 60 + (Number(seconds) || 0);
+  return <Field label="Duration">
+    <div className="duration-inputs">
+      <Input name="durationMinutes" type="number" min={0} max={1440} value={minutes} aria-label="Duration minutes" onChange={(event) => setMinutes(event.target.value)} />
+      <span>:</span>
+      <Input name="durationSecondsPart" type="number" min={0} max={59} value={seconds} aria-label="Duration seconds" onChange={(event) => setSeconds(event.target.value)} />
+      <output aria-label="Formatted duration">{formatDuration(total)}</output>
+    </div>
+    <input type="hidden" name="durationSeconds" value={total || ""} />
+    <small className="field-hint">Audio duration is detected automatically when reliable.</small>
+  </Field>;
+}
+
 function Select({ name, options, defaultValue }: { name: string; options: Array<string | [string, string]>; defaultValue?: string }) {
   return <NativeSelect name={name} required defaultValue={defaultValue}>{options.map((option) => {
     const [value, label] = Array.isArray(option) ? option : [option, option.replaceAll("_", " ")];
     return <NativeSelectOption value={value} key={value}>{label}</NativeSelectOption>;
   })}</NativeSelect>;
+}
+
+function durationFromForm(form: FormData) {
+  const minuteValue = form.get("durationMinutes");
+  const secondValue = form.get("durationSecondsPart");
+  if (minuteValue !== null || secondValue !== null) {
+    const minutes = Number(minuteValue ?? 0);
+    const seconds = Number(secondValue ?? 0);
+    const total = Math.max(0, Math.floor(Number.isFinite(minutes) ? minutes : 0) * 60 + Math.floor(Number.isFinite(seconds) ? seconds : 0));
+    return total || null;
+  }
+  const legacy = Number(form.get("durationSeconds") ?? 0);
+  return Number.isFinite(legacy) && legacy > 0 ? Math.floor(legacy) : null;
+}
+
+function presetValue(form: FormData, name: string) {
+  const choice = String(form.get(name) ?? "").trim();
+  return choice === "Other" ? String(form.get(`${name}Other`) ?? "").trim() : choice;
+}
+
+function formatDuration(totalSeconds: number) {
+  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
+}
+
+async function detectAudioDuration(file: File) {
+  if (!file.type.startsWith("audio/")) return null;
+  const url = URL.createObjectURL(file);
+  try {
+    const duration = await new Promise<number>((resolve) => {
+      const audio = document.createElement("audio");
+      audio.preload = "metadata";
+      audio.onloadedmetadata = () => resolve(audio.duration);
+      audio.onerror = () => resolve(0);
+      audio.src = url;
+    });
+    return Number.isFinite(duration) && duration > 0 && duration <= 86400 ? Math.round(duration) : null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function aiPolicyText(policy?: AiPolicySummary) {
