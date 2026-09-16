@@ -42,6 +42,7 @@ type WorkspaceRelease = {
   explicitStatus: "clean" | "explicit";
   approvalStatus: "draft" | "pending" | "approved" | "rejected" | "disabled";
   rightsConfirmed: boolean;
+  radioReadyConfirmed: boolean;
   aiDisclosure: string | null;
   submissionNotes: string | null;
   reviewNote: string | null;
@@ -130,7 +131,7 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
         aiClassification: form.get("aiClassification"),
         mood: form.get("mood"),
         durationSeconds: form.get("durationSeconds") ? Number(form.get("durationSeconds")) : null,
-        explicitStatus: form.get("explicitStatus"),
+        explicitStatus: "clean",
         rightsConfirmed: form.get("rightsConfirmed") === "on",
         aiDisclosure: form.get("aiDisclosure"),
         submissionNotes: form.get("submissionNotes"),
@@ -153,6 +154,10 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const releaseId = String(form.get("releaseId") ?? "");
+    if (form.get("radioReadyConfirmed") !== "on") {
+      setError("Confirm that this is the clean radio-ready version before uploading.");
+      return;
+    }
     const files = (["audio", "cover", "video"] as const).map((kind) => ({ kind, file: form.get(kind) })).filter((item): item is { kind: "audio" | "cover" | "video"; file: File } => item.file instanceof File && item.file.size > 0);
     if (!files.length) { setError("Choose an audio master, cover artwork, or release video."); return; }
 
@@ -172,6 +177,7 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
             "x-chuneside-release-id": releaseId,
             "x-chuneside-media-kind": item.kind,
             "x-chuneside-original-name": encodeURIComponent(item.file.name),
+            "x-chuneside-radio-ready-confirmed": "true",
           },
           body: item.file,
         });
@@ -236,7 +242,7 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
         aiClassification: form.get("aiClassification"),
         mood: form.get("mood"),
         durationSeconds: form.get("durationSeconds") ? Number(form.get("durationSeconds")) : null,
-        explicitStatus: form.get("explicitStatus"),
+        explicitStatus: "clean",
         rightsConfirmed: form.get("rightsConfirmed") === "on",
         aiDisclosure: form.get("aiDisclosure"),
         submissionNotes: form.get("submissionNotes"),
@@ -314,6 +320,8 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
         primaryGenre: form.get("primaryGenre"),
         websiteUrl: form.get("websiteUrl"),
         instagramUrl: form.get("instagramUrl"),
+        spotifyUrl: form.get("spotifyUrl"),
+        appleMusicUrl: form.get("appleMusicUrl"),
         youtubeUrl: form.get("youtubeUrl"),
       }),
     });
@@ -425,6 +433,8 @@ function ProfileDialog({ profile, busy, error, onClose, onSubmit }: { profile: W
           <Field label="Primary genre"><Input name="primaryGenre" required maxLength={80} defaultValue={profile.primaryGenre} /></Field>
           <Field label="Website"><Input name="websiteUrl" type="url" defaultValue={links.Website ?? ""} /></Field>
           <Field label="Instagram"><Input name="instagramUrl" type="url" defaultValue={links.Instagram ?? ""} /></Field>
+          <Field label="Spotify"><Input name="spotifyUrl" type="url" defaultValue={links.Spotify ?? ""} /></Field>
+          <Field label="Apple Music"><Input name="appleMusicUrl" type="url" defaultValue={links["Apple Music"] ?? ""} /></Field>
           <Field label="YouTube"><Input name="youtubeUrl" type="url" defaultValue={links.YouTube ?? ""} /></Field>
           <Field label="Biography" wide><Textarea name="biography" maxLength={2000} defaultValue={profile.biography} /></Field>
         </div>
@@ -442,11 +452,13 @@ function MediaDialog({ open, releases, busy, error, onClose, onSubmit }: { open:
         <DialogHeader><DialogTitle>Upload release media</DialogTitle><DialogDescription>Audio, artwork, and video remain private in R2 while the release is reviewed. Uploading a replacement returns the release to pending review.</DialogDescription></DialogHeader>
         <form className="catalog-editor-form" onSubmit={onSubmit}>
           <Field label="Release"><Select name="releaseId" options={releases.map((release) => [release.id, release.title])} /></Field>
+          <p className="radio-ready-copy"><strong>Create freely. Submit clean. Get discovered.</strong> ChuneSide is a launch pad for radio, DJs, promoters, and bigger stages. Your submitted files should be the clean, radio-ready version.</p>
           <div className="catalog-form-grid">
             <Field label="Audio master (40 MB max)"><Input name="audio" type="file" accept="audio/mpeg,audio/wav,audio/mp4,audio/ogg" /></Field>
             <Field label="Cover artwork (8 MB max)"><Input name="cover" type="file" accept="image/jpeg,image/png,image/webp" /></Field>
             <Field label="Release video (optional, 100 MB max)"><Input name="video" type="file" accept="video/mp4,video/webm,video/quicktime" /></Field>
           </div>
+          <label className="catalog-check rights-confirmation"><input name="radioReadyConfirmed" type="checkbox" required /><span>I confirm these files are the clean, radio-ready version prepared for radio, DJs, promoters, and bigger stages.</span></label>
           {error && <p className="catalog-editor-error" role="alert">{error}</p>}
           <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy || !releases.length}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Upload />} Upload media</Button></DialogFooter>
         </form>
@@ -468,6 +480,7 @@ function ReleaseDialog({ open, profiles, busy, error, onClose, onSubmit }: {
       <DialogContent className="catalog-editor-dialog">
         <DialogHeader><DialogTitle>Submit a release</DialogTitle><DialogDescription>Submit metadata for human review, then attach audio and artwork from the upload panel before approval.</DialogDescription></DialogHeader>
         <form className="catalog-editor-form" onSubmit={onSubmit}>
+          <p className="radio-ready-copy"><strong>Create freely. Submit clean. Get discovered.</strong> ChuneSide is a launch pad for radio, DJs, promoters, and bigger stages. Your uploaded files must be the clean, radio-ready version.</p>
           <div className="catalog-form-grid">
             <Field label="Artist"><Select name="artistProfileId" options={profiles.map((profile) => [profile.id, profile.stageName])} /></Field>
             <Field label="Release title"><Input name="title" required maxLength={160} /></Field>
@@ -480,7 +493,6 @@ function ReleaseDialog({ open, profiles, busy, error, onClose, onSubmit }: {
             <Field label="AI classification"><Select name="aiClassification" options={[["human_created", "Human-created"], ["ai_assisted", "AI-assisted"], ["primarily_ai_generated", "Primarily AI-generated"], ["classification_pending", "Classification pending"]]} /></Field>
             <Field label="Mood"><Input name="mood" maxLength={120} /></Field>
             <Field label="Duration in seconds"><Input name="durationSeconds" type="number" min={1} max={86400} /></Field>
-            <Field label="Content label"><Select name="explicitStatus" options={["clean", "explicit"]} /></Field>
             <Field label="AI use disclosure"><Textarea name="aiDisclosure" maxLength={1000} placeholder="Required for AI-assisted releases: describe the tools used and what they contributed." /></Field>
             <Field label="Submission notes"><Textarea name="submissionNotes" maxLength={1000} placeholder="Optional context for the ChuneSide review team." /></Field>
           </div>
@@ -508,10 +520,10 @@ function ReleaseCorrectionDialog({ release, busy, error, onClose, onSubmit }: { 
           <Field label="AI classification"><Select name="aiClassification" options={[["human_created", "Human-created"], ["ai_assisted", "AI-assisted"], ["primarily_ai_generated", "Primarily AI-generated"], ["classification_pending", "Classification pending"]]} defaultValue={release.aiClassification} /></Field>
           <Field label="Mood"><Input name="mood" maxLength={120} defaultValue={release.mood ?? ""} /></Field>
           <Field label="Duration in seconds"><Input name="durationSeconds" type="number" min={1} max={86400} defaultValue={release.durationSeconds ?? ""} /></Field>
-          <Field label="Content label"><Select name="explicitStatus" options={["clean", "explicit"]} defaultValue={release.explicitStatus} /></Field>
           <Field label="AI use disclosure"><Textarea name="aiDisclosure" maxLength={1000} defaultValue={release.aiDisclosure ?? ""} /></Field>
           <Field label="Submission notes"><Textarea name="submissionNotes" maxLength={1000} defaultValue={release.submissionNotes ?? ""} /></Field>
         </div>
+        <p className="radio-ready-copy"><strong>Create freely. Submit clean. Get discovered.</strong> For ChuneSide, resubmit the clean radio-ready version prepared for opportunity.</p>
         <label className="catalog-check rights-confirmation"><input name="rightsConfirmed" type="checkbox" required defaultChecked={release.rightsConfirmed} /><span>I confirm I own or have permission to use the music, samples, artwork, voices, and likenesses in this submission.</span></label>
         {error && <p className="catalog-editor-error" role="alert">{error}</p>}
         <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Send />} Return to review</Button></DialogFooter>

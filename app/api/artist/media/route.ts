@@ -37,10 +37,14 @@ export async function POST(request: Request) {
 
   const releaseId = request.headers.get("x-chuneside-release-id");
   const kind = request.headers.get("x-chuneside-media-kind");
+  const radioReadyConfirmed = request.headers.get("x-chuneside-radio-ready-confirmed") === "true";
   const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
   const originalName = safeOriginalName(request.headers.get("x-chuneside-original-name"));
   if (!releaseId || !["audio", "cover", "video"].includes(String(kind)) || !request.body) {
     return NextResponse.json({ error: "Choose a release and a valid media file." }, { status: 400 });
+  }
+  if (!radioReadyConfirmed) {
+    return NextResponse.json({ error: "Confirm that this is the clean radio-ready version before uploading." }, { status: 400 });
   }
 
   const mediaKind = kind as MediaKind;
@@ -105,11 +109,19 @@ export async function POST(request: Request) {
       ne(releaseMedia.id, id),
     ));
     await Promise.all(previous.map((item) => bucket.delete(item.objectKey)));
-    await db.update(releases).set({ approvalStatus: "pending", reviewNote: null, reviewedAt: null, reviewedBy: null, updatedAt: now }).where(eq(releases.id, releaseId));
+    await db.update(releases).set({
+      explicitStatus: "clean",
+      radioReadyConfirmed: true,
+      approvalStatus: "pending",
+      reviewNote: null,
+      reviewedAt: null,
+      reviewedBy: null,
+      updatedAt: now,
+    }).where(eq(releases.id, releaseId));
     await db.insert(adminAuditLogs).values({
       id: randomUUID(), actorId: access.user.id, actorEmail: access.user.email,
       action: "artist.media_upload", entityType: "release_media", entityId: id,
-      details: JSON.stringify({ releaseId, kind: mediaKind, contentType, sizeBytes: prepared.size }), createdAt: now,
+      details: JSON.stringify({ releaseId, kind: mediaKind, contentType, sizeBytes: prepared.size, radioReadyConfirmed: true }), createdAt: now,
     });
     const [media] = await db.select().from(releaseMedia).where(eq(releaseMedia.id, id)).limit(1);
     return NextResponse.json({ media });

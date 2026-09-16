@@ -22,6 +22,7 @@ type ReviewRelease = {
   aiClassification: "human_created" | "ai_assisted" | "primarily_ai_generated" | "classification_pending";
   explicitStatus: "clean" | "explicit";
   rightsConfirmed: boolean;
+  radioReadyConfirmed: boolean;
   aiDisclosure: string | null;
   submissionNotes: string | null;
   createdAt: string;
@@ -83,6 +84,7 @@ export function ReviewQueueClient({ adminAccessSource, mediaRequired, initialRev
       <section className="admin-summary" aria-label="Review queue summary">
         <div><strong>{reviews.length}</strong><span>Pending review</span></div>
         <div><strong>{reviews.filter((release) => release.rightsConfirmed).length}</strong><span>Rights confirmed</span></div>
+        <div><strong>{reviews.filter((release) => release.radioReadyConfirmed).length}</strong><span>Radio-ready</span></div>
         <div><strong>{reviews.filter((release) => release.creationType === "ai_assisted").length}</strong><span>AI-assisted</span></div>
       </section>
       {message && <p className="admin-message" role="status">{message}</p>}
@@ -111,12 +113,13 @@ export function ReviewQueueClient({ adminAccessSource, mediaRequired, initialRev
             <article className="review-item" key={release.id}>
               <div className="review-item-heading">
                 <div><span>{release.discoveryLane} lane</span><h2>{release.title}</h2><p>{release.artistName} · {release.genre} · {release.region}</p></div>
-                <div className="review-badges"><span>{release.explicitStatus}</span><span className={release.rightsConfirmed ? "ready" : "blocked"}>{release.rightsConfirmed ? "Rights confirmed" : "Rights missing"}</span>{release.creationType === "ai_assisted" && <span className="ai"><Sparkles /> AI-assisted</span>}</div>
+                <div className="review-badges"><span>{release.explicitStatus}</span><span className={release.rightsConfirmed ? "ready" : "blocked"}>{release.rightsConfirmed ? "Rights confirmed" : "Rights missing"}</span><span className={release.radioReadyConfirmed ? "ready" : "blocked"}>{release.radioReadyConfirmed ? "Radio-ready confirmed" : "Radio-ready missing"}</span>{release.creationType === "ai_assisted" && <span className="ai"><Sparkles /> AI-assisted</span>}</div>
               </div>
               <div className="review-disclosures">
                 <div><strong>AI classification</strong><p>{classificationLabel(release.aiClassification)}</p></div>
                 <div><strong>AI disclosure</strong><p>{release.aiDisclosure || "Not applicable or not provided."}</p></div>
                 <div><strong>Artist notes</strong><p>{release.submissionNotes || "No additional notes."}</p></div>
+                <div><strong>Opportunity readiness</strong><p>{release.radioReadyConfirmed ? "Clean radio-ready version confirmed for radio, DJs, promoters, and bigger stages." : "Clean radio-ready version has not been confirmed."}</p></div>
               </div>
               <div className="review-media">
                 {release.media.map((media) => media.kind === "cover" ? (

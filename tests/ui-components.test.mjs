@@ -124,13 +124,34 @@ test("provides a stable artist slug for every demo track", async () => {
   assert.equal(demoTracks.find((track) => track.id === 3).artistSlug, "nia-vale");
 });
 
-test("blocks release approval until rights and AI disclosures are complete", async () => {
+test("blocks release approval until rights, radio-ready confirmation, and AI disclosures are complete", async () => {
   const { releaseReviewBlockers } = await vite.ssrLoadModule("/lib/release-policy.ts");
 
-  assert.deepEqual(releaseReviewBlockers({ rightsConfirmed: false, creationType: "artist_made", aiDisclosure: null }), ["Rights confirmation is required."]);
-  assert.deepEqual(releaseReviewBlockers({ rightsConfirmed: true, creationType: "ai_assisted", aiDisclosure: "  " }), ["AI-involved releases require a disclosure note."]);
-  assert.deepEqual(releaseReviewBlockers({ rightsConfirmed: true, creationType: "artist_made", aiClassification: "primarily_ai_generated", aiDisclosure: "  " }), ["AI-involved releases require a disclosure note."]);
-  assert.deepEqual(releaseReviewBlockers({ rightsConfirmed: true, creationType: "ai_assisted", aiDisclosure: "Voice cleanup and stem separation." }), []);
+  assert.deepEqual(releaseReviewBlockers({ rightsConfirmed: false, radioReadyConfirmed: true, creationType: "artist_made", aiDisclosure: null }), ["Rights confirmation is required."]);
+  assert.deepEqual(releaseReviewBlockers({ rightsConfirmed: true, radioReadyConfirmed: false, creationType: "artist_made", aiDisclosure: null }), ["Clean radio-ready confirmation is required."]);
+  assert.deepEqual(releaseReviewBlockers({ rightsConfirmed: true, radioReadyConfirmed: true, explicitStatus: "explicit", creationType: "artist_made", aiDisclosure: null }), ["ChuneSide submissions must use the clean radio-ready version."]);
+  assert.deepEqual(releaseReviewBlockers({ rightsConfirmed: true, radioReadyConfirmed: true, creationType: "ai_assisted", aiDisclosure: "  " }), ["AI-involved releases require a disclosure note."]);
+  assert.deepEqual(releaseReviewBlockers({ rightsConfirmed: true, radioReadyConfirmed: true, creationType: "artist_made", aiClassification: "primarily_ai_generated", aiDisclosure: "  " }), ["AI-involved releases require a disclosure note."]);
+  assert.deepEqual(releaseReviewBlockers({ rightsConfirmed: true, radioReadyConfirmed: true, creationType: "ai_assisted", aiDisclosure: "Voice cleanup and stem separation." }), []);
+});
+
+test("keeps radio-ready confirmation and platform links in the artist workflow", async () => {
+  const [dashboard, mediaRoute, profileRoute, reviewPage, reviewClient] = await Promise.all([
+    readFile(path.join(root, "app", "artist", "dashboard", "artist-dashboard-client.tsx"), "utf8"),
+    readFile(path.join(root, "app", "api", "artist", "media", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "api", "artist", "profile", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "admin", "reviews", "page.tsx"), "utf8"),
+    readFile(path.join(root, "app", "admin", "reviews", "review-queue-client.tsx"), "utf8"),
+  ]);
+
+  assert.match(dashboard, /Create freely\. Submit clean\. Get discovered\./);
+  assert.match(dashboard, /name="radioReadyConfirmed"/);
+  assert.match(dashboard, /x-chuneside-radio-ready-confirmed/);
+  assert.match(profileRoute, /spotifyUrl/);
+  assert.match(profileRoute, /appleMusicUrl/);
+  assert.match(reviewPage, /radioReadyConfirmed: releases\.radioReadyConfirmed/);
+  assert.match(reviewClient, /Radio-ready confirmed/);
+  assert.match(mediaRoute, /Confirm that this is the clean radio-ready version before uploading/);
 });
 
 test("validates uploaded media by size, type, and file signature", async () => {

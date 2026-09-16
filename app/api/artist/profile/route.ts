@@ -15,6 +15,8 @@ const profileSchema = z.object({
   primaryGenre: z.string().trim().min(1).max(80),
   websiteUrl: z.union([z.literal(""), z.string().url().max(500)]),
   instagramUrl: z.union([z.literal(""), z.string().url().max(500)]),
+  spotifyUrl: z.union([z.literal(""), z.string().url().max(500)]),
+  appleMusicUrl: z.union([z.literal(""), z.string().url().max(500)]),
   youtubeUrl: z.union([z.literal(""), z.string().url().max(500)]),
 });
 
@@ -33,9 +35,11 @@ export async function POST(request: Request) {
   if (!profile) return NextResponse.json({ error: "That profile is not linked to your artist account." }, { status: 403 });
 
   const socialLinksJson = JSON.stringify(Object.fromEntries([
-    ["Website", input.websiteUrl],
-    ["Instagram", input.instagramUrl],
-    ["YouTube", input.youtubeUrl],
+      ["Website", input.websiteUrl],
+      ["Instagram", input.instagramUrl],
+      ["Spotify", input.spotifyUrl],
+      ["Apple Music", input.appleMusicUrl],
+      ["YouTube", input.youtubeUrl],
   ].filter((entry): entry is [string, string] => Boolean(entry[1]))));
   const now = new Date();
   await db.update(artistProfiles).set({

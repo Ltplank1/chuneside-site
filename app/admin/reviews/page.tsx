@@ -39,6 +39,7 @@ export default async function ReviewQueuePage() {
     aiClassification: releases.aiClassification,
     explicitStatus: releases.explicitStatus,
     rightsConfirmed: releases.rightsConfirmed,
+    radioReadyConfirmed: releases.radioReadyConfirmed,
     aiDisclosure: releases.aiDisclosure,
     submissionNotes: releases.submissionNotes,
     createdAt: releases.createdAt,

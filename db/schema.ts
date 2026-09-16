@@ -114,6 +114,7 @@ export const releases = sqliteTable("releases", {
   featured: integer("featured", { mode: "boolean" }).notNull().default(false),
   approvalStatus: text("approval_status", { enum: ["draft", "pending", "approved", "rejected", "disabled"] }).notNull().default("draft"),
   rightsConfirmed: integer("rights_confirmed", { mode: "boolean" }).notNull().default(false),
+  radioReadyConfirmed: integer("radio_ready_confirmed", { mode: "boolean" }).notNull().default(false),
   aiDisclosure: text("ai_disclosure"),
   submissionNotes: text("submission_notes"),
   reviewNote: text("review_note"),

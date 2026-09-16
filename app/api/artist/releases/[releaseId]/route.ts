@@ -19,7 +19,7 @@ const inputSchema = z.object({
   aiClassification: z.enum(aiClassifications as [AiClassification, ...AiClassification[]]),
   mood: z.string().trim().max(120).optional(),
   durationSeconds: z.number().int().min(1).max(86400).nullable(),
-  explicitStatus: z.enum(["clean", "explicit"]),
+  explicitStatus: z.literal("clean", { message: "ChuneSide submissions must use the clean radio-ready version." }),
   rightsConfirmed: z.literal(true, { message: "You must confirm that you hold the required rights." }),
   aiDisclosure: z.string().trim().max(1000).optional(),
   submissionNotes: z.string().trim().max(1000).optional(),

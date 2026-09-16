@@ -34,6 +34,8 @@ const artistInput = z.object({
   coverImageUrl: optionalUrl,
   websiteUrl: optionalUrl,
   instagramUrl: optionalUrl,
+  spotifyUrl: optionalUrl,
+  appleMusicUrl: optionalUrl,
   youtubeUrl: optionalUrl,
   verificationStatus: z.enum(["unverified", "pending", "verified", "rejected"]),
   foundingArtist: z.boolean(),
@@ -87,6 +89,8 @@ export async function POST(request: Request) {
       const socialLinksJson = JSON.stringify(Object.fromEntries([
         ["Website", input.websiteUrl],
         ["Instagram", input.instagramUrl],
+        ["Spotify", input.spotifyUrl],
+        ["Apple Music", input.appleMusicUrl],
         ["YouTube", input.youtubeUrl],
       ].filter((entry): entry is [string, string] => Boolean(entry[1]))));
       const values = {
@@ -129,6 +133,8 @@ export async function POST(request: Request) {
       const [existing] = await db.select({
         approvalStatus: releases.approvalStatus,
         rightsConfirmed: releases.rightsConfirmed,
+        radioReadyConfirmed: releases.radioReadyConfirmed,
+        explicitStatus: releases.explicitStatus,
         creationType: releases.creationType,
         aiClassification: releases.aiClassification,
         aiDisclosure: releases.aiDisclosure,

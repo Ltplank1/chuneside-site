@@ -44,6 +44,8 @@ export function CatalogEditor({ editor, artists, ownerAccounts, onClose, onSaved
           coverImageUrl: form.get("coverImageUrl"),
           websiteUrl: form.get("websiteUrl"),
           instagramUrl: form.get("instagramUrl"),
+          spotifyUrl: form.get("spotifyUrl"),
+          appleMusicUrl: form.get("appleMusicUrl"),
           youtubeUrl: form.get("youtubeUrl"),
           verificationStatus: form.get("verificationStatus"),
           foundingArtist: form.get("foundingArtist") === "on",
@@ -132,6 +134,8 @@ function ArtistFields({ artist, socialLinks, ownerAccounts }: { artist: AdminArt
       <Field label="Cover image URL"><Input name="coverImageUrl" type="url" defaultValue={artist?.coverImageUrl ?? ""} /></Field>
       <Field label="Website"><Input name="websiteUrl" type="url" defaultValue={socialLinks.Website ?? ""} /></Field>
       <Field label="Instagram"><Input name="instagramUrl" type="url" defaultValue={socialLinks.Instagram ?? ""} /></Field>
+      <Field label="Spotify"><Input name="spotifyUrl" type="url" defaultValue={socialLinks.Spotify ?? ""} /></Field>
+      <Field label="Apple Music"><Input name="appleMusicUrl" type="url" defaultValue={socialLinks["Apple Music"] ?? ""} /></Field>
       <Field label="YouTube"><Input name="youtubeUrl" type="url" defaultValue={socialLinks.YouTube ?? ""} /></Field>
       <label className="catalog-check"><input name="foundingArtist" type="checkbox" defaultChecked={artist?.foundingArtist ?? false} /><span>Founding Artist</span></label>
       <Field label="Biography" wide><Textarea name="biography" maxLength={2000} defaultValue={artist?.biography ?? ""} /></Field>
