@@ -169,6 +169,10 @@ test("keeps release metadata inputs searchable and duration compatible", async (
   assert.match(dashboard, /value="Other"/);
   assert.match(dashboard, /method: "DELETE"/);
   assert.match(dashboard, /workspace-delete-button/);
+  assert.match(dashboard, /Confirm release deletion/);
+  assert.match(dashboard, /signInWithPassword/);
+  assert.match(dashboard, /Delete permanently/);
+  assert.match(dashboard, /current-password/);
   assert.match(options, /commonCountries/);
   assert.match(options, /United States/);
 });

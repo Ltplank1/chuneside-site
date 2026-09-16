@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { PasswordInput } from "@/app/auth/password-input";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { commonCountries, countryOptions, genrePresets, moodPresets } from "@/lib/submission-options";
 
 type WorkspaceProfile = {
@@ -106,6 +108,8 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
   const [stageEditOpen, setStageEditOpen] = useState<WorkspaceStagePerformance | null>(null);
   const [profileOpen, setProfileOpen] = useState<WorkspaceProfile | null>(null);
   const [releaseEditOpen, setReleaseEditOpen] = useState<WorkspaceRelease | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<WorkspaceRelease | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -209,18 +213,38 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
 
   async function deleteRelease(release: WorkspaceRelease) {
     if (!window.confirm(`Delete "${release.title}" permanently? This removes it from ChuneSide and cannot be undone.`)) return;
+    setDeletePassword("");
+    setDeleteTarget(release);
+  }
+
+  async function confirmDeleteRelease(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!deleteTarget || !deletePassword) return;
     setBusy(true);
     setError("");
-    const response = await fetch(`/api/artist/releases/${release.id}`, { method: "DELETE" });
+    try {
+      const supabase = await createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error("Sign in again before deleting a release.");
+      const { error: passwordError } = await supabase.auth.signInWithPassword({ email: user.email, password: deletePassword });
+      if (passwordError) throw new Error("That password was not accepted.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Password verification failed.");
+      setBusy(false);
+      return;
+    }
+    const response = await fetch(`/api/artist/releases/${deleteTarget.id}`, { method: "DELETE" });
     const data = await response.json().catch(() => ({})) as { error?: string };
     if (!response.ok) {
       setError(data.error ?? "The release could not be deleted.");
       setBusy(false);
       return;
     }
-    setReleaseRows((current) => current.filter((item) => item.id !== release.id));
-    setMediaRows((current) => current.filter((item) => item.releaseId !== release.id));
-    setMessage(release.title + " was deleted from ChuneSide.");
+    setReleaseRows((current) => current.filter((item) => item.id !== deleteTarget.id));
+    setMediaRows((current) => current.filter((item) => item.releaseId !== deleteTarget.id));
+    setMessage(deleteTarget.title + " was deleted from ChuneSide.");
+    setDeleteTarget(null);
+    setDeletePassword("");
     setBusy(false);
   }
 
@@ -441,6 +465,16 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
       <MediaDialog open={mediaOpen} releases={releaseRows.filter((release) => !["approved", "disabled"].includes(release.approvalStatus))} busy={busy} error={error} onClose={() => setMediaOpen(false)} onSubmit={uploadMedia} />
       <ProfileDialog profile={profileOpen} busy={busy} error={error} onClose={() => setProfileOpen(null)} onSubmit={saveProfile} />
       <ReleaseCorrectionDialog release={releaseEditOpen} busy={busy} error={error} onClose={() => setReleaseEditOpen(null)} onSubmit={resubmitRelease} />
+      <Dialog open={Boolean(deleteTarget)} onOpenChange={(next) => !next && !busy && setDeleteTarget(null)}>
+        <DialogContent className="catalog-editor-dialog">
+          <DialogHeader><DialogTitle>Confirm release deletion</DialogTitle><DialogDescription>Enter your account password to permanently remove {deleteTarget?.title ?? "this release"} from ChuneSide and delete its stored media.</DialogDescription></DialogHeader>
+          <form className="catalog-editor-form" onSubmit={confirmDeleteRelease}>
+            <label className="catalog-field"><span>Account password</span><PasswordInput value={deletePassword} onChange={(event) => setDeletePassword(event.target.value)} autoComplete="current-password" required /></label>
+            {error && <p className="catalog-editor-error" role="alert">{error}</p>}
+            <DialogFooter><Button type="button" variant="outline" disabled={busy} onClick={() => setDeleteTarget(null)}>Cancel</Button><Button type="submit" className="workspace-delete-button" disabled={busy || !deletePassword}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Trash2 />} Delete permanently</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       <StageSubmissionDialog open={stageOpen} profiles={profileRows} busy={busy} error={error} onClose={() => setStageOpen(false)} onSubmit={submitStagePerformance} />
       <StageSubmissionDialog open={Boolean(stageEditOpen)} profiles={profileRows} performance={stageEditOpen} busy={busy} error={error} onClose={() => setStageEditOpen(null)} onSubmit={resubmitStagePerformance} />
     </main>
