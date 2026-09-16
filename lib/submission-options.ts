@@ -15,9 +15,14 @@ export const commonCountries = [
 ] as const;
 
 export function countryOptions() {
-  const displayNames = new Intl.DisplayNames(["en"], { type: "region" });
-  const codes = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("region") : [];
-  const names = codes.map((code) => displayNames.of(code)).filter((name): name is string => Boolean(name));
+  const names = [
+    "Argentina", "Australia", "Austria", "Belgium", "Belize", "Brazil", "China", "Colombia", "Costa Rica",
+    "Cuba", "Curaçao", "Denmark", "Dominican Republic", "Ecuador", "Egypt", "France", "Germany", "Ghana",
+    "Greece", "Guatemala", "Haiti", "Honduras", "India", "Ireland", "Israel", "Italy", "Japan", "Kenya",
+    "Mexico", "Morocco", "Netherlands", "New Zealand", "Nigeria", "Norway", "Panama", "Peru", "Philippines",
+    "Poland", "Portugal", "Puerto Rico", "South Africa", "South Korea", "Spain", "Sweden", "Switzerland",
+    "Tanzania", "Thailand", "Uganda", "Ukraine", "United Arab Emirates", "Uruguay", "Venezuela", "Vietnam",
+  ];
   return Array.from(new Set([...commonCountries, ...names])).sort((a, b) => a.localeCompare(b));
 }
 

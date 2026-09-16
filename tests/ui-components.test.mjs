@@ -167,7 +167,8 @@ test("keeps release metadata inputs searchable and duration compatible", async (
   assert.match(dashboard, /name="durationSecondsPart"/);
   assert.match(dashboard, /x-chuneside-duration-seconds/);
   assert.match(dashboard, /value="Other"/);
-  assert.match(options, /Intl\.supportedValuesOf\("region"\)/);
+  assert.match(options, /commonCountries/);
+  assert.match(options, /United States/);
 });
 
 test("validates uploaded media by size, type, and file signature", async () => {
