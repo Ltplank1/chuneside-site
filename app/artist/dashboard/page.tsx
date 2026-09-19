@@ -13,7 +13,8 @@ import { ArtistDashboardClient } from "./artist-dashboard-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function ArtistDashboardPage() {
+export default async function ArtistDashboardPage({ searchParams }: { searchParams?: Promise<{ confirmDelete?: string }> }) {
+  const params = await searchParams;
   const access = await getArtistWorkspaceAccess();
   if (access.status === "anonymous") {
     redirect(appSignInPath("/artist/dashboard"));
@@ -87,6 +88,7 @@ export default async function ArtistDashboardPage() {
         createdAt: release.createdAt.toISOString(),
         updatedAt: release.updatedAt.toISOString(),
       }))}
+      pendingDeleteId={params?.confirmDelete}
     />
   );
 }

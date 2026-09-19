@@ -173,6 +173,9 @@ test("keeps release metadata inputs searchable and duration compatible", async (
   assert.match(dashboard, /signInWithPassword/);
   assert.match(dashboard, /Delete permanently/);
   assert.match(dashboard, /current-password/);
+  assert.match(dashboard, /signInWithOAuth/);
+  assert.match(dashboard, /prompt: "login"/);
+  assert.match(dashboard, /Set or change your ChuneSide password/);
   assert.match(options, /commonCountries/);
   assert.match(options, /United States/);
 });

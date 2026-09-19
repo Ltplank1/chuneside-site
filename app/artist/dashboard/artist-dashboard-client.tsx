@@ -1,9 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Bot, BriefcaseBusiness, Disc3, Edit3, FileAudio, ImageIcon, LoaderCircle, PlaySquare, Plus, Send, Trash2, Upload, Video } from "lucide-react";
+import { BadgeCheck, Bot, BriefcaseBusiness, Disc3, Edit3, FileAudio, ImageIcon, KeyRound, LoaderCircle, PlaySquare, Plus, Send, Trash2, Upload, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -88,7 +88,7 @@ type WorkspaceStagePerformance = {
   reviewNote: string | null;
 };
 
-export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initialReleases, initialMedia, initialStagePerformances, mediaUploadsAvailable, stageSubmissionsAvailable }: {
+export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initialReleases, initialMedia, initialStagePerformances, mediaUploadsAvailable, stageSubmissionsAvailable, pendingDeleteId }: {
   displayName: string;
   profiles: WorkspaceProfile[];
   aiPolicies: AiPolicySummary[];
@@ -97,6 +97,7 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
   initialStagePerformances: WorkspaceStagePerformance[];
   mediaUploadsAvailable: boolean;
   stageSubmissionsAvailable: boolean;
+  pendingDeleteId?: string;
 }) {
   const [profileRows, setProfileRows] = useState(profiles);
   const [releaseRows, setReleaseRows] = useState(initialReleases);
@@ -110,11 +111,20 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
   const [releaseEditOpen, setReleaseEditOpen] = useState<WorkspaceRelease | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WorkspaceRelease | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
+  const [deleteVerification, setDeleteVerification] = useState<"password" | "google" | "google-verified">("password");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const profileNames = new Map(profileRows.map((profile) => [profile.id, profile.stageName]));
   const policyByProfile = new Map(aiPolicies.map((policy) => [policy.artistProfileId, policy]));
+
+  useEffect(() => {
+    const release = pendingDeleteId ? releaseRows.find((item) => item.id === pendingDeleteId) : null;
+    if (release) {
+      setDeleteVerification("google-verified");
+      setDeleteTarget(release);
+    }
+  }, [pendingDeleteId, releaseRows]);
 
   async function submitRelease(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -214,24 +224,49 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
   async function deleteRelease(release: WorkspaceRelease) {
     if (!window.confirm(`Delete "${release.title}" permanently? This removes it from ChuneSide and cannot be undone.`)) return;
     setDeletePassword("");
+    setDeleteVerification("password");
     setDeleteTarget(release);
+    try {
+      const { data: { user } } = await (await createSupabaseBrowserClient()).auth.getUser();
+      if (user?.app_metadata?.provider === "google") setDeleteVerification("google");
+    } catch {
+      // Keep the password option available if provider metadata is unavailable.
+    }
   }
 
   async function confirmDeleteRelease(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!deleteTarget || !deletePassword) return;
+    if (!deleteTarget || (deleteVerification === "password" && !deletePassword)) return;
+    if (deleteVerification === "google") {
+      setBusy(true);
+      setError("");
+      try {
+        const returnTo = `/artist/dashboard?confirmDelete=${encodeURIComponent(deleteTarget.id)}`;
+        const { error: oauthError } = await (await createSupabaseBrowserClient()).auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`, queryParams: { prompt: "login" } },
+        });
+        if (oauthError) throw oauthError;
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Google verification could not be started.");
+        setBusy(false);
+      }
+      return;
+    }
     setBusy(true);
     setError("");
-    try {
-      const supabase = await createSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) throw new Error("Sign in again before deleting a release.");
-      const { error: passwordError } = await supabase.auth.signInWithPassword({ email: user.email, password: deletePassword });
-      if (passwordError) throw new Error("That password was not accepted.");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Password verification failed.");
-      setBusy(false);
-      return;
+    if (deleteVerification === "password") {
+      try {
+        const supabase = await createSupabaseBrowserClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user?.email) throw new Error("Sign in again before deleting a release.");
+        const { error: passwordError } = await supabase.auth.signInWithPassword({ email: user.email, password: deletePassword });
+        if (passwordError) throw new Error("That password was not accepted.");
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Password verification failed.");
+        setBusy(false);
+        return;
+      }
     }
     const response = await fetch(`/api/artist/releases/${deleteTarget.id}`, { method: "DELETE" });
     const data = await response.json().catch(() => ({})) as { error?: string };
@@ -467,11 +502,11 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
       <ReleaseCorrectionDialog release={releaseEditOpen} busy={busy} error={error} onClose={() => setReleaseEditOpen(null)} onSubmit={resubmitRelease} />
       <Dialog open={Boolean(deleteTarget)} onOpenChange={(next) => !next && !busy && setDeleteTarget(null)}>
         <DialogContent className="catalog-editor-dialog">
-          <DialogHeader><DialogTitle>Confirm release deletion</DialogTitle><DialogDescription>Enter your account password to permanently remove {deleteTarget?.title ?? "this release"} from ChuneSide and delete its stored media.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Confirm release deletion</DialogTitle><DialogDescription>{deleteVerification === "google" ? "Continue with Google to verify your identity before permanently removing " : deleteVerification === "google-verified" ? "Google verification is complete. Click Delete permanently to remove " : "Enter your ChuneSide account password to permanently remove "}{deleteTarget?.title ?? "this release"} from ChuneSide and delete its stored media.</DialogDescription></DialogHeader>
           <form className="catalog-editor-form" onSubmit={confirmDeleteRelease}>
-            <label className="catalog-field"><span>Account password</span><PasswordInput value={deletePassword} onChange={(event) => setDeletePassword(event.target.value)} autoComplete="current-password" required /></label>
+            {deleteVerification === "password" && <><label className="catalog-field"><span>ChuneSide account password</span><PasswordInput value={deletePassword} onChange={(event) => setDeletePassword(event.target.value)} autoComplete="current-password" required /></label><Link className="auth-switch" href="/auth/reset-password?returnTo=%2Fartist%2Fdashboard"><KeyRound /> Set or change your ChuneSide password</Link></>}
             {error && <p className="catalog-editor-error" role="alert">{error}</p>}
-            <DialogFooter><Button type="button" variant="outline" disabled={busy} onClick={() => setDeleteTarget(null)}>Cancel</Button><Button type="submit" className="workspace-delete-button" disabled={busy || !deletePassword}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Trash2 />} Delete permanently</Button></DialogFooter>
+            <DialogFooter><Button type="button" variant="outline" disabled={busy} onClick={() => setDeleteTarget(null)}>Cancel</Button><Button type="submit" className="workspace-delete-button" disabled={busy || (deleteVerification === "password" && !deletePassword)}>{busy ? <LoaderCircle className="catalog-spinner" /> : deleteVerification === "google" ? <KeyRound /> : <Trash2 />} {deleteVerification === "google" ? "Continue with Google" : "Delete permanently"}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
