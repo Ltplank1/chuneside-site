@@ -176,6 +176,10 @@ test("keeps release metadata inputs searchable and duration compatible", async (
   assert.match(dashboard, /signInWithOAuth/);
   assert.match(dashboard, /prompt: "login"/);
   assert.match(dashboard, /Set or change your ChuneSide password/);
+  assert.match(dashboard, /workspace-notification/);
+  assert.match(dashboard, /View activity/);
+  assert.match(dashboard, /Your release was approved/);
+  assert.match(dashboard, /chuneside-review-notification-read/);
   assert.match(options, /commonCountries/);
   assert.match(options, /United States/);
 });

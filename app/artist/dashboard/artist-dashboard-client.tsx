@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Bot, BriefcaseBusiness, Disc3, Edit3, FileAudio, ImageIcon, KeyRound, LoaderCircle, PlaySquare, Plus, Send, Trash2, Upload, Video } from "lucide-react";
+import { BadgeCheck, Bell, Bot, BriefcaseBusiness, ChevronRight, Disc3, Edit3, FileAudio, ImageIcon, KeyRound, LoaderCircle, PlaySquare, Plus, Send, Trash2, Upload, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -112,11 +112,23 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
   const [deleteTarget, setDeleteTarget] = useState<WorkspaceRelease | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteVerification, setDeleteVerification] = useState<"password" | "google" | "google-verified">("password");
+  const [notificationRead, setNotificationRead] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const profileNames = new Map(profileRows.map((profile) => [profile.id, profile.stageName]));
   const policyByProfile = new Map(aiPolicies.map((policy) => [policy.artistProfileId, policy]));
+  const reviewNotifications = releaseRows.filter((release) => release.approvalStatus === "rejected" && release.reviewNote || release.approvalStatus === "approved");
+
+  useEffect(() => {
+    setNotificationRead(window.sessionStorage.getItem("chuneside-review-notification-read") === "true");
+  }, []);
+
+  function openReviewNotifications() {
+    setNotificationRead(true);
+    window.sessionStorage.setItem("chuneside-review-notification-read", "true");
+    document.getElementById("release-activity")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   useEffect(() => {
     const release = pendingDeleteId ? releaseRows.find((item) => item.id === pendingDeleteId) : null;
@@ -437,6 +449,11 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
             <div><strong>{releaseRows.filter((release) => release.approvalStatus === "approved").length}</strong><span>Approved</span></div>
             <div className="workspace-toolbar-actions">{mediaUploadsAvailable && <Button variant="outline" onClick={() => setMediaOpen(true)} disabled={!releaseRows.length}><Upload /> Upload media</Button>}{stageSubmissionsAvailable && <Button variant="outline" onClick={() => setStageOpen(true)}><PlaySquare /> Submit Stage</Button>}<Button onClick={() => setOpen(true)}><Plus /> Submit release</Button></div>
           </section>
+          {reviewNotifications.length > 0 && !notificationRead && <section className="workspace-notification" role="status">
+            <Bell />
+            <div><strong>{reviewNotifications[0].approvalStatus === "approved" ? "Your release was approved" : reviewNotifications.length === 1 ? "Your release needs attention" : `${reviewNotifications.length} releases need attention`}</strong><p>{reviewNotifications[0].approvalStatus === "approved" ? `${reviewNotifications[0].title} is now live on ChuneSide.` : `${reviewNotifications[0].title} was returned with a reviewer note: ${reviewNotifications[0].reviewNote}`}</p></div>
+            <Button type="button" variant="outline" onClick={openReviewNotifications}>View activity <ChevronRight /></Button>
+          </section>}
           {message && <p className="admin-message" role="status">{message}</p>}
           <section className="workspace-profile-list">
             {profileRows.map((profile) => (
@@ -463,7 +480,7 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
               })}
             </div>
           </section>
-          <section className="workspace-release-section">
+          <section className="workspace-release-section" id="release-activity">
             <div className="catalog-section-heading"><Disc3 /><div><h2>Release activity</h2><p>Only ChuneSide administrators can approve and publish submitted records.</p></div></div>
             <div className="workspace-release-list">
               {releaseRows.map((release) => (
