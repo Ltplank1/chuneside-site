@@ -264,6 +264,7 @@ export const adCampaigns = sqliteTable("ad_campaigns", {
   name: text("name").notNull(),
   sponsorName: text("sponsor_name").notNull(),
   status: text("status", { enum: ["draft", "active", "paused"] }).notNull().default("draft"),
+  manualOverride: text("manual_override", { enum: ["auto", "on", "off"] }).notNull().default("auto"),
   startAt: integer("start_at", { mode: "timestamp_ms" }),
   endAt: integer("end_at", { mode: "timestamp_ms" }),
   rotationWeight: integer("rotation_weight").notNull().default(1),

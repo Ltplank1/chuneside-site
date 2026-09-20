@@ -60,6 +60,15 @@ export async function POST(request: Request) {
     await db.insert(adminAuditLogs).values({ id: randomUUID(), actorId: admin.id, actorEmail: admin.email, action: "advertising.campaign_delete", entityType: "ad_campaign", entityId: body.id, details: "{}", createdAt: now });
     return NextResponse.json({ ok: true });
   }
+  if (body?.action === "override") {
+    if (typeof body.id !== "string" || !["auto", "on", "off"].includes(String(body.mode))) return NextResponse.json({ error: "Campaign override was not accepted." }, { status: 400 });
+    const mode = body.mode as "auto" | "on" | "off";
+    const update = { manualOverride: mode, updatedAt: now, updatedBy: admin.email };
+    if (mode === "on") await db.update(adCampaigns).set({ ...update, status: "active" }).where(eq(adCampaigns.id, body.id));
+    else await db.update(adCampaigns).set(update).where(eq(adCampaigns.id, body.id));
+    await db.insert(adminAuditLogs).values({ id: randomUUID(), actorId: admin.id, actorEmail: admin.email, action: `advertising.override_${mode}`, entityType: "ad_campaign", entityId: body.id, details: JSON.stringify({ mode }), createdAt: now });
+    return NextResponse.json({ ok: true });
+  }
   const parsed = campaignSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Check the campaign fields and try again." }, { status: 400 });
   const id = parsed.data.id ?? randomUUID();

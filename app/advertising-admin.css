@@ -7,4 +7,5 @@
 .ad-form-grid input[type="date"]{color-scheme:dark}.ad-form-grid input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.95}
 .ad-check{display:flex!important;align-items:center;gap:.5rem;min-height:42px;padding:.55rem .7rem;border:1px solid #3a3d46;background:#171920}
 .ad-check input{width:17px;height:17px;accent-color:var(--primary)}
+.ad-row-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.35rem}.ad-row-actions button{white-space:nowrap}
 @media(max-width:640px){.ad-editor{max-height:calc(100dvh - 1rem);padding:1rem}.ad-form-grid{grid-template-columns:1fr}.ad-form-grid .ad-file{grid-column:auto}}

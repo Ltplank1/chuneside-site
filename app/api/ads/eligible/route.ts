@@ -24,8 +24,14 @@ export async function GET(request: Request) {
   const now = new Date();
   const campaigns = await db.select().from(adCampaigns).where(and(
     eq(adCampaigns.status, "active"),
-    or(isNull(adCampaigns.startAt), lte(adCampaigns.startAt, now)),
-    or(isNull(adCampaigns.endAt), gte(adCampaigns.endAt, now)),
+    or(
+      eq(adCampaigns.manualOverride, "on"),
+      and(
+        eq(adCampaigns.manualOverride, "auto"),
+        or(isNull(adCampaigns.startAt), lte(adCampaigns.startAt, now)),
+        or(isNull(adCampaigns.endAt), gte(adCampaigns.endAt, now)),
+      ),
+    ),
   )).orderBy(asc(adCampaigns.updatedAt)).limit(24);
   const usable = campaigns.filter((campaign) => campaign.videoObjectKey);
   if (!usable.length) return NextResponse.json({ campaign: null }, { headers: { "cache-control": "private, max-age=15" } });
