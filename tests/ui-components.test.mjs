@@ -139,21 +139,29 @@ test("defines qualified listening without changing like-based rankings", async (
 });
 
 test("exposes protected listening analytics with date filters and song drill-down", async () => {
-  const [schema, migration, analyticsRoute, analyticsPage, analyticsClient] = await Promise.all([
+  const [schema, migration, shareMigration, analyticsRoute, analyticsPage, analyticsClient, shareRoute] = await Promise.all([
     readFile(path.join(root, "db", "schema.ts"), "utf8"),
     readFile(path.join(root, "drizzle", "0010_listening_analytics.sql"), "utf8"),
+    readFile(path.join(root, "drizzle", "0011_share_events.sql"), "utf8"),
     readFile(path.join(root, "app", "api", "admin", "analytics", "route.ts"), "utf8"),
     readFile(path.join(root, "app", "admin", "analytics", "page.tsx"), "utf8"),
     readFile(path.join(root, "app", "admin", "analytics", "analytics-client.tsx"), "utf8"),
+    readFile(path.join(root, "app", "api", "share", "route.ts"), "utf8"),
   ]);
   assert.match(schema, /listeningEvents/);
+  assert.match(schema, /shareEvents/);
   assert.match(migration, /CREATE TABLE `listening_events`/);
+  assert.match(shareMigration, /CREATE TABLE `share_events`/);
   assert.match(analyticsRoute, /getAdminGate/);
   assert.match(analyticsRoute, /from/);
   assert.match(analyticsPage, /admin\/analytics/);
   assert.match(analyticsClient, /Song reach/);
   assert.match(analyticsClient, /setSelectedReleaseId/);
   assert.match(analyticsClient, /Qualified stream policy/);
+  assert.match(analyticsClient, /Last 7 days/);
+  assert.match(analyticsClient, /returningListeners/);
+  assert.match(analyticsClient, /analytics-sort/);
+  assert.match(shareRoute, /approvalStatus, "approved"/);
 });
 
 test("provides a stable artist slug for every demo track", async () => {

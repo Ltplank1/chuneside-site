@@ -288,6 +288,21 @@ export default function Home() {
     const data = { title: "ChuneSide", text: "Discover the next sound from Wadadli and beyond.", url: window.location.href };
     if (navigator.share) await navigator.share(data); else await navigator.clipboard.writeText(window.location.href);
   };
+  const shareTrack = async (track: PublicTrack) => {
+    const url = `${window.location.origin}/#discover`;
+    const data = { title: `${track.title} by ${track.artist}`, text: `Listen to ${track.title} by ${track.artist} on ChuneSide.`, url };
+    try {
+      if (navigator.share) await navigator.share(data); else await navigator.clipboard.writeText(url);
+      if (track.releaseId) {
+        if (!listenerTokenRef.current) {
+          const stored = window.localStorage.getItem("chuneside-listener-id");
+          listenerTokenRef.current = stored || crypto.randomUUID();
+          window.localStorage.setItem("chuneside-listener-id", listenerTokenRef.current);
+        }
+        void fetch("/api/share", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ releaseId: track.releaseId, listenerToken: listenerTokenRef.current }), keepalive: true });
+      }
+    } catch { /* A cancelled native share is not an analytics event. */ }
+  };
 
   return <main>
     <header className="site-header">
@@ -346,7 +361,7 @@ export default function Home() {
           <div className="track-grid">{visibleTracks.map((track, index) => <article className="track-card" key={track.id}>
             <button className="cover-button" onClick={() => chooseTrack(track)} aria-label={`Play ${track.title} by ${track.artist}`}><Cover track={track} /><span className="play-float">{activeId === track.id && playing ? <Pause /> : <Play fill="currentColor" />}</span><span className="track-number">{String(index + 1).padStart(2, "0")}</span></button>
             <div className="track-meta"><div><h3>{track.title}</h3><p><Link href={"/artists/" + track.artistSlug}>{track.artist}</Link> · {track.genre}</p><small>{track.origin} · {track.creation}</small></div><span>{track.duration}</span></div>
-            <div className="reaction-row">{songRankingsOn && <button type="button" disabled={memberBusy === `like-${track.id}`} aria-pressed={memberState?.likes.includes(track.id) ?? false} className={memberState?.likes.includes(track.id) ? "selected" : ""} onClick={() => memberAction("like", track)}><Heart fill="currentColor" /> {memberState?.allTime[String(track.id)] ?? 0} verified likes</button>}<button type="button" disabled={memberBusy === `follow-${track.id}`} aria-pressed={memberState?.follows.includes(track.artist) ?? false} className={memberState?.follows.includes(track.artist) ? "selected fan" : "fan"} onClick={() => memberAction("follow", track)}><UserPlus /> {memberState?.follows.includes(track.artist) ? "Following" : "Follow"}</button></div>
+            <div className="reaction-row">{songRankingsOn && <button type="button" disabled={memberBusy === `like-${track.id}`} aria-pressed={memberState?.likes.includes(track.id) ?? false} className={memberState?.likes.includes(track.id) ? "selected" : ""} onClick={() => memberAction("like", track)}><Heart fill="currentColor" /> {memberState?.allTime[String(track.id)] ?? 0} verified likes</button>}<button type="button" disabled={memberBusy === `follow-${track.id}`} aria-pressed={memberState?.follows.includes(track.artist) ?? false} className={memberState?.follows.includes(track.artist) ? "selected fan" : "fan"} onClick={() => memberAction("follow", track)}><UserPlus /> {memberState?.follows.includes(track.artist) ? "Following" : "Follow"}</button><button type="button" onClick={() => void shareTrack(track)} aria-label={`Share ${track.title} by ${track.artist}`}><Share2 /> Share</button></div>
           </article>)}{visibleTracks.length === 0 && <div className="empty-state"><Disc3 /><h3>No chunes found</h3><p>{catalogSource === "database" && tracks.length === 0 ? "Approved music will appear here as releases complete review." : "Try another lane, title or genre."}</p></div>}</div>
         </TabsContent>
       </Tabs>

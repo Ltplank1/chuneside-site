@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./analytics.css";
 import { ServiceWorkerRegistration } from "./service-worker-registration";
 import { InstallPrompt } from "./install-prompt";
 

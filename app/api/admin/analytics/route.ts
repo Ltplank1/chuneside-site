@@ -21,6 +21,6 @@ export async function GET(request: Request) {
     const { from, to } = dateRange(url.searchParams);
     return NextResponse.json(await getListeningAnalytics({ from, to, releaseId: url.searchParams.get("releaseId") || undefined }));
   } catch {
-    return NextResponse.json({ error: "Listening analytics are not ready. Apply migration 0010 before using this screen." }, { status: 503 });
+    return NextResponse.json({ error: "Listening analytics are not ready. Apply migrations 0010 and 0011 before using this screen." }, { status: 503 });
   }
 }

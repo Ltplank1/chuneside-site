@@ -48,6 +48,18 @@ export const listeningEvents = sqliteTable("listening_events", {
   index("idx_listening_events_qualified").on(table.qualified, table.startedAt),
 ]);
 
+export const shareEvents = sqliteTable("share_events", {
+  id: text("id").primaryKey(),
+  releaseId: text("release_id").notNull().references(() => releases.id, { onDelete: "cascade" }),
+  memberId: text("member_id").references(() => members.id, { onDelete: "set null" }),
+  listenerType: text("listener_type", { enum: ["member", "guest"] }).notNull(),
+  listenerKeyHash: text("listener_key_hash").notNull(),
+  sharedAt: integer("shared_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [
+  index("idx_share_events_release_date").on(table.releaseId, table.sharedAt),
+  index("idx_share_events_listener_date").on(table.listenerKeyHash, table.sharedAt),
+]);
+
 export const artistFollows = sqliteTable("artist_follows", {
   memberId: text("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
   artist: text("artist").notNull(),
