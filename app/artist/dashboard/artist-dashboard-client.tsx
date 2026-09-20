@@ -779,19 +779,30 @@ async function encodeWavToMp3(file: File) {
   const audioContext = new AudioContext();
   try {
     const decoded = await audioContext.decodeAudioData(await file.arrayBuffer());
+    // lamejs 1.2.1's browser bundle leaves MPEGMode as an undeclared global in
+    // Encoder/PsyModel. Provide that dependency only for the conversion call.
+    const modeModule = await import("lamejs/src/js/MPEGMode.js");
+    const globalScope = globalThis as typeof globalThis & { MPEGMode?: unknown };
+    const previousMode = globalScope.MPEGMode;
+    globalScope.MPEGMode = modeModule.default;
     const lame = await import("lamejs");
-    const channels = Math.min(decoded.numberOfChannels, 2);
-    const encoder = new lame.Mp3Encoder(channels, decoded.sampleRate, 320);
-    const left = floatToInt16(decoded.getChannelData(0));
-    const right = channels === 2 ? floatToInt16(decoded.getChannelData(1)) : undefined;
-    const parts: BlobPart[] = [];
-    for (let offset = 0; offset < left.length; offset += 1152) {
-      const encoded = encoder.encodeBuffer(left.subarray(offset, offset + 1152), right?.subarray(offset, offset + 1152));
-      if (encoded.length) parts.push(Uint8Array.from(encoded));
+    try {
+      const channels = Math.min(decoded.numberOfChannels, 2);
+      const encoder = new lame.Mp3Encoder(channels, decoded.sampleRate, 320);
+      const left = floatToInt16(decoded.getChannelData(0));
+      const right = channels === 2 ? floatToInt16(decoded.getChannelData(1)) : undefined;
+      const parts: BlobPart[] = [];
+      for (let offset = 0; offset < left.length; offset += 1152) {
+        const encoded = encoder.encodeBuffer(left.subarray(offset, offset + 1152), right?.subarray(offset, offset + 1152));
+        if (encoded.length) parts.push(Uint8Array.from(encoded));
+      }
+      const tail = encoder.flush();
+      if (tail.length) parts.push(Uint8Array.from(tail));
+      return new File(parts, file.name.replace(/\.wav$/i, ".mp3"), { type: "audio/mpeg" });
+    } finally {
+      if (previousMode === undefined) delete globalScope.MPEGMode;
+      else globalScope.MPEGMode = previousMode;
     }
-    const tail = encoder.flush();
-    if (tail.length) parts.push(Uint8Array.from(tail));
-    return new File(parts, file.name.replace(/\.wav$/i, ".mp3"), { type: "audio/mpeg" });
   } finally {
     await audioContext.close();
   }
