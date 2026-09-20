@@ -102,8 +102,10 @@ async function uploadCampaignMedia(campaignId: string, files: readonly [string, 
     const upload = new FormData(); upload.set("campaignId", campaignId); upload.set("kind", kind); upload.set("file", file);
     const uploadResponse = await fetch("/api/admin/advertising/media", { method: "POST", body: upload }).catch(() => null);
     if (!uploadResponse?.ok) {
-      const uploadData = await uploadResponse?.json().catch(() => null) as { error?: string } | null;
-      onFinished(uploadData?.error ?? `${kind} upload failed.`);
+      const responseText = await uploadResponse?.text().catch(() => "") ?? "";
+      let uploadData: { error?: string } | null = null;
+      try { uploadData = responseText ? JSON.parse(responseText) as { error?: string } : null; } catch { /* Non-JSON worker errors are handled by the fallback below. */ }
+      onFinished(uploadData?.error ?? `${kind === "video" ? "Video" : "Poster"} upload failed. Please try again.`);
       return;
     }
   }
