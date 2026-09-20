@@ -1,8 +1,10 @@
 export const stageStatuses = ["draft", "submitted", "pending_review", "approved", "scheduled", "published", "featured", "rejected", "archived"] as const;
+export const stagePerformanceTypes = ["artist", "dj"] as const;
 export const stagePlacements = ["none", "featured", "latest", "trending", "most_watched", "wadadli", "caribbean"] as const;
 export const stageFeeStatuses = ["not_required", "free_promotion", "discounted", "waived", "pending", "paid"] as const;
 
 export type StageStatus = typeof stageStatuses[number];
+export type StagePerformanceType = typeof stagePerformanceTypes[number];
 export type StagePlacement = typeof stagePlacements[number];
 export type StageFeeStatus = typeof stageFeeStatuses[number];
 
@@ -37,4 +39,25 @@ export function parseSongsPerformed(value: string) {
 
 export function stageStatusNeedsConsent(status: StageStatus) {
   return ["approved", "scheduled", "published", "featured"].includes(status);
+}
+
+export type StageTracklistInput = {
+  title: string;
+  externalArtistName?: string | null;
+  artistProfileId?: string | null;
+  releaseId?: string | null;
+  externalInfo?: string | null;
+};
+
+export function normalizeTracklist(entries: StageTracklistInput[]) {
+  return entries
+    .map((entry) => ({
+      title: entry.title.trim(),
+      externalArtistName: entry.externalArtistName?.trim() || null,
+      artistProfileId: entry.artistProfileId || null,
+      releaseId: entry.releaseId || null,
+      externalInfo: entry.externalInfo?.trim() || null,
+    }))
+    .filter((entry) => entry.title)
+    .slice(0, 30);
 }

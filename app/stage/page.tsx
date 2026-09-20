@@ -19,6 +19,7 @@ type StageSearchParams = {
   q?: string | string[];
   region?: string | string[];
   genre?: string | string[];
+  type?: string | string[];
   sort?: string | string[];
 };
 
@@ -28,6 +29,7 @@ export default async function StagePage({ searchParams }: { searchParams?: Promi
     query: firstParam(params.q).trim(),
     region: firstParam(params.region).trim(),
     genre: firstParam(params.genre).trim(),
+    type: firstParam(params.type).trim(),
   };
   const sort = stageSort(firstParam(params.sort));
   const { performances: allPerformances, available, source } = await getPublicStagePerformances();
@@ -36,7 +38,7 @@ export default async function StagePage({ searchParams }: { searchParams?: Promi
   const featured = performances.find((performance) => performance.status === "featured") ?? performances[0] ?? allPerformances[0];
   const regions = uniqueValues(allPerformances.map((performance) => performance.region));
   const genres = uniqueValues(allPerformances.map((performance) => performance.genre));
-  const filterCount = Number(Boolean(filters.query)) + Number(Boolean(filters.region)) + Number(Boolean(filters.genre)) + Number(sort !== "curated");
+  const filterCount = Number(Boolean(filters.query)) + Number(Boolean(filters.region)) + Number(Boolean(filters.genre)) + Number(Boolean(filters.type)) + Number(sort !== "curated");
   const showcaseSections = [
     ["Featured on ChuneSide Stage", performances.filter((performance) => performance.status === "featured" || performance.homePlacement === "featured")],
     ["Latest performances", [...performances].sort((a, b) => dateValue(b.performanceDate) - dateValue(a.performanceDate)).slice(0, 3)],
@@ -89,8 +91,9 @@ export default async function StagePage({ searchParams }: { searchParams?: Promi
         </div>
 
         {available && allPerformances.length > 0 && (
-          <form className="stage-filter-bar">
+          <><nav className="stage-type-tabs" aria-label="Filter by performance type"><Link className={!filters.type ? "active" : ""} href="/stage">All Stage</Link><Link className={filters.type === "artist" ? "active" : ""} href="/stage?type=artist">Artists</Link><Link className={filters.type === "dj" ? "active" : ""} href="/stage?type=dj">DJs</Link></nav><form className="stage-filter-bar">
             <label><Search /><input name="q" defaultValue={filters.query} placeholder="Search artist, song or title" aria-label="Search Stage performances" /></label>
+            <input type="hidden" name="type" value={filters.type} />
             <select name="region" defaultValue={filters.region} aria-label="Filter Stage by region">
               <option value="">All regions</option>
               {regions.map((region) => <option key={region} value={region}>{region}</option>)}
@@ -106,7 +109,7 @@ export default async function StagePage({ searchParams }: { searchParams?: Promi
             </select>
             <Button type="submit">Filter</Button>
             {filterCount > 0 && <Button asChild type="button" variant="outline"><Link href="/stage">Clear</Link></Button>}
-          </form>
+          </form></>
         )}
 
         {!available && (
@@ -126,11 +129,11 @@ export default async function StagePage({ searchParams }: { searchParams?: Promi
                 {performance.thumbnailUrl ? <Image src={performance.thumbnailUrl} alt="" fill sizes="(max-width: 760px) 100vw, 420px" unoptimized /> : <PlaySquare />}
               </div>
               <div className="stage-public-copy">
-                <strong>{performance.status === "featured" ? "Featured" : "Published"}</strong>
+                <strong>{performance.status === "featured" ? "Featured" : "Published"} · {performance.performanceType === "dj" ? "DJ Performance" : "Artist Performance"}</strong>
                 <h3><Link href={`/stage/${performance.slug}`}>{performance.title}</Link></h3>
                 <Link href={`/artists/${performance.artistSlug}`}>{performance.artistStageName}</Link>
                 <p>{performance.description || `${performance.genre} performance from ${performance.region}.`}</p>
-                <small><MapPin /> {performance.region} · {performance.durationMinutes ?? "--"} min · {performance.songsPerformed.length} {performance.songsPerformed.length === 1 ? "song" : "songs"} · {performance.viewCount.toLocaleString()} views</small>
+                <small><MapPin /> {performance.region} · {performance.durationMinutes ?? "--"} min · {performance.performanceType === "dj" ? performance.tracklist.length : performance.songsPerformed.length} {performance.performanceType === "dj" ? "tracks" : "songs"} · {performance.viewCount.toLocaleString()} views</small>
                 <div className="stage-card-actions"><Button asChild><Link href={`/stage/${performance.slug}`}><Play /> Watch performance</Link></Button><Button asChild variant="outline"><a href={performance.youtubeUrl ?? `https://www.youtube.com/watch?v=${performance.youtubeVideoId}`} target="_blank" rel="noreferrer"><ExternalLink /> Open YouTube</a></Button></div>
               </div>
             </article>

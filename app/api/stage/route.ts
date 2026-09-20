@@ -12,9 +12,10 @@ export async function GET(request: Request) {
     query: url.searchParams.get("q") ?? "",
     region: url.searchParams.get("region") ?? "",
     genre: url.searchParams.get("genre") ?? "",
+    type: url.searchParams.get("type") ?? "",
   };
   const placement = url.searchParams.get("placement") ?? "";
-  const hasFilters = Boolean(filters.query || filters.region || filters.genre);
+  const hasFilters = Boolean(filters.query || filters.region || filters.genre || filters.type);
   const result = await getPublicStagePerformances(hasFilters || placement === "home" ? 60 : limit);
   const filtered = hasFilters ? filterPublicStagePerformances(result.performances, filters) : result.performances;
   const performances = placement === "home"

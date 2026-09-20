@@ -3,7 +3,7 @@
 import { FormEvent, type ReactNode, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Archive, LoaderCircle, Pencil, PlaySquare, Plus, Save, Search } from "lucide-react";
+import { Archive, ArrowDown, ArrowUp, LoaderCircle, Pencil, PlaySquare, Plus, Save, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ type StageFeeStatus = "not_required" | "free_promotion" | "discounted" | "waived
 type StagePerformance = {
   id: string;
   artistProfileId: string;
+  performanceType: "artist" | "dj";
   slug: string;
   title: string;
   description: string;
@@ -29,6 +30,7 @@ type StagePerformance = {
   performanceDate: string | null;
   status: StageStatus;
   artistConsent: boolean;
+  rightsDeclaration: boolean;
   originalSubmissionInfo: string | null;
   homePlacement: StagePlacement;
   featureStartAt: string | null;
@@ -40,14 +42,18 @@ type StagePerformance = {
   createdAt: string;
   updatedAt: string;
   updatedBy: string | null;
+  tracklist: TracklistEntry[];
 };
 type ArtistOption = { id: string; stageName: string };
+type ReleaseOption = { id: string; title: string; artistProfileId: string };
+type TracklistEntry = { id?: string; title: string; externalArtistName: string | null; artistProfileId: string | null; releaseId: string | null; externalInfo: string | null };
 type EditorState = StagePerformance | "new" | null;
 
-export function StageClient({ adminAccessSource, storageReady, artists, initialPerformances }: {
+export function StageClient({ adminAccessSource, storageReady, artists, releases, initialPerformances }: {
   adminAccessSource: "allowlist" | "role";
   storageReady: boolean;
   artists: ArtistOption[];
+  releases: ReleaseOption[];
   initialPerformances: StagePerformance[];
 }) {
   const [performances, setPerformances] = useState(initialPerformances);
@@ -92,7 +98,7 @@ export function StageClient({ adminAccessSource, storageReady, artists, initialP
       });
   }, [artistNames, performances, placementFilter, search, sortMode, statusFilter]);
 
-  async function save(event: FormEvent<HTMLFormElement>) {
+  async function save(event: FormEvent<HTMLFormElement>, tracklist: TracklistEntry[]) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const current = typeof editor === "object" ? editor : null;
@@ -106,6 +112,7 @@ export function StageClient({ adminAccessSource, storageReady, artists, initialP
         action: "save",
         id: current?.id,
         artistProfileId: form.get("artistProfileId"),
+        performanceType: form.get("performanceType"),
         slug: form.get("slug"),
         title: form.get("title"),
         description: form.get("description"),
@@ -118,6 +125,7 @@ export function StageClient({ adminAccessSource, storageReady, artists, initialP
         performanceDate: form.get("performanceDate"),
         status: form.get("status"),
         artistConsent: form.get("artistConsent") === "on",
+        rightsDeclaration: form.get("rightsDeclaration") === "on",
         originalSubmissionInfo: form.get("originalSubmissionInfo"),
         homePlacement: form.get("homePlacement"),
         featureStartAt: form.get("featureStartAt"),
@@ -125,6 +133,7 @@ export function StageClient({ adminAccessSource, storageReady, artists, initialP
         stageFeeLabel: form.get("stageFeeLabel"),
         feeStatus: form.get("feeStatus"),
         reviewNote: form.get("reviewNote"),
+        tracklist,
       }),
     });
     const data = await response.json() as { performance?: StagePerformance; error?: string };
@@ -133,10 +142,11 @@ export function StageClient({ adminAccessSource, storageReady, artists, initialP
       setBusyId("");
       return;
     }
+    const savedPerformance = { ...data.performance, tracklist } as StagePerformance;
     setPerformances((currentRows) => {
-      const next = currentRows.some((item) => item.id === data.performance?.id)
-        ? currentRows.map((item) => item.id === data.performance?.id ? data.performance as StagePerformance : item)
-        : [...currentRows, data.performance as StagePerformance];
+      const next = currentRows.some((item) => item.id === savedPerformance.id)
+        ? currentRows.map((item) => item.id === savedPerformance.id ? savedPerformance : item)
+        : [...currentRows, savedPerformance];
       return next.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     });
     setMessage("ChuneSide Stage performance saved.");
@@ -234,7 +244,7 @@ export function StageClient({ adminAccessSource, storageReady, artists, initialP
         {visiblePerformances.map((performance) => (
           <article key={performance.id}>
             <div className="stage-thumb">{performance.thumbnailUrl ? <Image src={performance.thumbnailUrl} alt="" fill sizes="88px" unoptimized /> : <PlaySquare />}</div>
-            <div><h2>{performance.title}</h2><p>{artistNames.get(performance.artistProfileId) ?? "Unknown artist"} · {performance.genre} · {performance.region}</p><small>{songsLabel(performance.songsPerformedJson)} · {performance.durationMinutes ?? "--"} min · {performance.youtubeVideoId ? "YouTube ready" : "No video"}</small><span className={"stage-placement " + placementState(performance)}>{placementLabel(performance)}</span><span className="stage-metrics">{performance.viewCount.toLocaleString()} views · {performance.favoriteCount.toLocaleString()} favorites</span></div>
+            <div><h2>{performance.title}</h2><p>{performance.performanceType === "dj" ? "DJ Performance" : "Artist Performance"} · {artistNames.get(performance.artistProfileId) ?? "Unknown profile"} · {performance.genre} · {performance.region}</p><small>{performance.performanceType === "dj" ? `${performance.tracklist.length} linked tracks` : songsLabel(performance.songsPerformedJson)} · {performance.durationMinutes ?? "--"} min · {performance.youtubeVideoId ? "YouTube ready" : "No video"}</small><span className={"stage-placement " + placementState(performance)}>{placementLabel(performance)}</span><span className="stage-metrics">{performance.viewCount.toLocaleString()} views · {performance.favoriteCount.toLocaleString()} favorites</span></div>
             <strong className={"stage-status " + performance.status}>{label(performance.status)}</strong>
             <span className={performance.artistConsent ? "stage-consent ready" : "stage-consent"}>{performance.artistConsent ? "Consent" : "No consent"}</span>
             <Button variant="ghost" size="icon" onClick={() => setEditor(performance)} aria-label={"Edit " + performance.title}><Pencil /></Button>
@@ -245,27 +255,37 @@ export function StageClient({ adminAccessSource, storageReady, artists, initialP
         {performances.length > 0 && !visiblePerformances.length && <div className="admin-empty"><Search /><h2>No matching Stage performances</h2><p>Try a different status, placement, sort, or search term.</p></div>}
       </section>
 
-      <StageEditor editor={editor} artists={artists} busy={busyId === "save"} error={error} onClose={() => setEditor(null)} onSubmit={save} />
+      <StageEditor key={typeof editor === "object" ? editor.id : String(editor)} editor={editor} artists={artists} releases={releases} busy={busyId === "save"} error={error} onClose={() => setEditor(null)} onSubmit={save} />
     </main>
   );
 }
 
-function StageEditor({ editor, artists, busy, error, onClose, onSubmit }: {
+function StageEditor({ editor, artists, releases, busy, error, onClose, onSubmit }: {
   editor: EditorState;
   artists: ArtistOption[];
+  releases: ReleaseOption[];
   busy: boolean;
   error: string;
   onClose: () => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>, tracklist: TracklistEntry[]) => void;
 }) {
   const performance = typeof editor === "object" ? editor : null;
+  const [tracklist, setTracklist] = useState<TracklistEntry[]>(performance?.tracklist ?? []);
+  const moveTrack = (index: number, direction: -1 | 1) => setTracklist((current) => {
+    const target = index + direction;
+    if (target < 0 || target >= current.length) return current;
+    const next = [...current];
+    [next[index], next[target]] = [next[target], next[index]];
+    return next;
+  });
   return (
     <Dialog open={Boolean(editor)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="catalog-editor-dialog stage-editor-dialog">
         <DialogHeader><DialogTitle>{performance ? "Edit Stage performance" : "Create Stage performance"}</DialogTitle><DialogDescription>Use YouTube embeds first. Confirm artist consent before approval, scheduling, publishing, or featuring.</DialogDescription></DialogHeader>
-        {editor && <form className="catalog-editor-form" onSubmit={onSubmit}>
+        {editor && <form className="catalog-editor-form" onSubmit={(event) => onSubmit(event, tracklist)}>
           <div className="catalog-form-grid">
-            <Field label="Artist"><NativeSelect name="artistProfileId" defaultValue={performance?.artistProfileId ?? artists[0]?.id ?? ""} required>{artists.map((artist) => <NativeSelectOption key={artist.id} value={artist.id}>{artist.stageName}</NativeSelectOption>)}</NativeSelect></Field>
+            <Field label="Performance type"><Choice name="performanceType" value={performance?.performanceType ?? "artist"} options={["artist", "dj"]} /></Field>
+            <Field label="Artist or DJ profile"><NativeSelect name="artistProfileId" defaultValue={performance?.artistProfileId ?? artists[0]?.id ?? ""} required>{artists.map((artist) => <NativeSelectOption key={artist.id} value={artist.id}>{artist.stageName}</NativeSelectOption>)}</NativeSelect></Field>
             <Field label="Performance title"><Input name="title" required maxLength={160} defaultValue={performance?.title ?? ""} /></Field>
             <Field label="Slug"><Input name="slug" required maxLength={90} placeholder="artist-stage-performance" defaultValue={performance?.slug ?? ""} /></Field>
             <Field label="Status"><Choice name="status" value={performance?.status ?? "draft"} options={["draft", "submitted", "pending_review", "approved", "scheduled", "published", "featured", "rejected", "archived"]} /></Field>
@@ -281,11 +301,13 @@ function StageEditor({ editor, artists, busy, error, onClose, onSubmit }: {
             <Field label="Feature starts"><Input name="featureStartAt" type="datetime-local" defaultValue={dateTimeLocal(performance?.featureStartAt)} /></Field>
             <Field label="Feature ends"><Input name="featureEndAt" type="datetime-local" defaultValue={dateTimeLocal(performance?.featureEndAt)} /></Field>
             <Field label="Songs performed" wide><Textarea name="songsPerformed" maxLength={1000} defaultValue={songsText(performance?.songsPerformedJson)} placeholder={"Song one\nSong two\nSong three"} /></Field>
+            <div className="catalog-field wide stage-tracklist-editor"><span>DJ tracklist (optional)</span><p>Link ChuneSide artists and approved songs where they are identifiable. External tracks can remain unlinked.</p>{tracklist.map((track, index) => <div className="stage-tracklist-row" key={track.id ?? `new-${index}`}><Input aria-label={`Track ${index + 1} title`} value={track.title} onChange={(event) => setTracklist((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item))} placeholder="Song title" /><Input aria-label={`Track ${index + 1} external artist`} value={track.externalArtistName ?? ""} onChange={(event) => setTracklist((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, externalArtistName: event.target.value || null } : item))} placeholder="Artist or external artist" /><NativeSelect aria-label={`Link artist for track ${index + 1}`} value={track.artistProfileId ?? ""} onChange={(event) => setTracklist((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, artistProfileId: event.target.value || null } : item))}><NativeSelectOption value="">No ChuneSide artist link</NativeSelectOption>{artists.map((artist) => <NativeSelectOption value={artist.id} key={artist.id}>{artist.stageName}</NativeSelectOption>)}</NativeSelect><NativeSelect aria-label={`Link release for track ${index + 1}`} value={track.releaseId ?? ""} onChange={(event) => setTracklist((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, releaseId: event.target.value || null } : item))}><NativeSelectOption value="">No ChuneSide song link</NativeSelectOption>{releases.map((release) => <NativeSelectOption value={release.id} key={release.id}>{release.title}</NativeSelectOption>)}</NativeSelect><Button type="button" variant="ghost" size="icon" aria-label="Move track up" onClick={() => moveTrack(index, -1)}><ArrowUp /></Button><Button type="button" variant="ghost" size="icon" aria-label="Move track down" onClick={() => moveTrack(index, 1)}><ArrowDown /></Button><Button type="button" variant="ghost" size="icon" aria-label="Remove track" onClick={() => setTracklist((current) => current.filter((_, itemIndex) => itemIndex !== index))}><Trash2 /></Button></div>)}<Button type="button" variant="outline" onClick={() => setTracklist((current) => [...current, { title: "", externalArtistName: null, artistProfileId: null, releaseId: null, externalInfo: null }])} disabled={tracklist.length >= 30}><Plus /> Add track</Button></div>
             <Field label="Description" wide><Textarea name="description" maxLength={2000} defaultValue={performance?.description ?? ""} /></Field>
             <Field label="Original submission info" wide><Textarea name="originalSubmissionInfo" maxLength={2000} defaultValue={performance?.originalSubmissionInfo ?? ""} /></Field>
             <Field label="Review note" wide><Textarea name="reviewNote" maxLength={1000} placeholder="Required when rejecting: explain what the artist needs to correct." /></Field>
           </div>
           <label className="catalog-check rights-confirmation"><input name="artistConsent" type="checkbox" defaultChecked={performance?.artistConsent ?? false} /><span>Artist consent is confirmed for ChuneSide Stage publication and potential official ChuneSide YouTube use.</span></label>
+          <label className="catalog-check rights-confirmation"><input name="rightsDeclaration" type="checkbox" defaultChecked={performance?.rightsDeclaration ?? false} /><span>I confirm this performance has the necessary permissions or rights declaration for ChuneSide Stage review and publication.</span></label>
           {error && <p className="catalog-editor-error" role="alert">{error}</p>}
           <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Save />} Save performance</Button></DialogFooter>
         </form>}

@@ -344,6 +344,7 @@ test("registers configurable admin-test controls for Stage, AI limits, and the n
   const publicSnapshot = defaultPublicFeatureSnapshot();
 
   assert.equal(byKey.get("chuneside_stage")?.label, "ChuneSide Stage");
+  assert.equal(byKey.get("dj_stage")?.state, "off");
   assert.equal(byKey.get("ai_upload_restriction")?.state, "admin_test");
   assert.equal(byKey.get("community_news_bar")?.state, "admin_test");
   assert.equal(publicSnapshot.community_news_bar.available, false);
@@ -461,8 +462,8 @@ test("classifies AI releases for configurable upload limits", async () => {
   assert.equal(classificationQualifiesForRestriction("classification_pending", "ai_generated"), true);
 });
 
-test("parses Stage videos and enforces publication consent policy", async () => {
-  const { extractYouTubeVideoId, parseSongsPerformed, stageStatusNeedsConsent } = await vite.ssrLoadModule("/lib/stage-policy.ts");
+test("parses Stage videos and keeps ordered DJ tracklists modular", async () => {
+  const { extractYouTubeVideoId, normalizeTracklist, parseSongsPerformed, stagePerformanceTypes, stageStatusNeedsConsent } = await vite.ssrLoadModule("/lib/stage-policy.ts");
 
   assert.equal(extractYouTubeVideoId("abcdefghijk"), "abcdefghijk");
   assert.equal(extractYouTubeVideoId("https://youtu.be/abcdefghijk"), "abcdefghijk");
@@ -472,6 +473,29 @@ test("parses Stage videos and enforces publication consent policy", async () => 
   assert.equal(stageStatusNeedsConsent("draft"), false);
   assert.equal(stageStatusNeedsConsent("approved"), true);
   assert.equal(stageStatusNeedsConsent("featured"), true);
+  assert.deepEqual(stagePerformanceTypes, ["artist", "dj"]);
+  assert.deepEqual(normalizeTracklist([{ title: "  Song A  ", externalArtistName: " DJ  ", artistProfileId: "", releaseId: null }]), [{ title: "Song A", externalArtistName: "DJ", artistProfileId: null, releaseId: null, externalInfo: null }]);
+});
+
+test("keeps DJ Stage linked to the existing Stage system behind its own gate", async () => {
+  const [schema, migration, adminRoute, publicStage, stagePage, stageDetail] = await Promise.all([
+    readFile(path.join(root, "db", "schema.ts"), "utf8"),
+    readFile(path.join(root, "drizzle", "0019_dj_stage.sql"), "utf8"),
+    readFile(path.join(root, "app", "api", "admin", "stage", "route.ts"), "utf8"),
+    readFile(path.join(root, "lib", "public-stage.ts"), "utf8"),
+    readFile(path.join(root, "app", "stage", "page.tsx"), "utf8"),
+    readFile(path.join(root, "app", "stage", "[slug]", "page.tsx"), "utf8"),
+  ]);
+  assert.match(schema, /performanceType/);
+  assert.match(schema, /stageTracklistEntries/);
+  assert.match(migration, /CREATE TABLE `stage_tracklist_entries`/);
+  assert.match(adminRoute, /rightsDeclaration/);
+  assert.match(adminRoute, /Linked ChuneSide songs must be approved public releases/);
+  assert.match(publicStage, /"dj_stage"/);
+  assert.match(stagePage, /All Stage/);
+  assert.match(stagePage, /DJ Performance/);
+  assert.match(stageDetail, /Music featured in this DJ Stage/);
+  assert.match(stageDetail, /Listen on ChuneSide/);
 });
 
 test("orders public Stage performances by active home placement", async () => {

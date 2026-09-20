@@ -341,6 +341,7 @@ export const aiSubmissionHistory = sqliteTable("ai_submission_history", {
 export const stagePerformances = sqliteTable("stage_performances", {
   id: text("id").primaryKey(),
   artistProfileId: text("artist_profile_id").notNull().references(() => artistProfiles.id, { onDelete: "cascade" }),
+  performanceType: text("performance_type", { enum: ["artist", "dj"] }).notNull().default("artist"),
   slug: text("slug").notNull(),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
@@ -354,6 +355,7 @@ export const stagePerformances = sqliteTable("stage_performances", {
   performanceDate: integer("performance_date", { mode: "timestamp_ms" }),
   status: text("status", { enum: ["draft", "submitted", "pending_review", "approved", "scheduled", "published", "featured", "rejected", "archived"] }).notNull().default("draft"),
   artistConsent: integer("artist_consent", { mode: "boolean" }).notNull().default(false),
+  rightsDeclaration: integer("rights_declaration", { mode: "boolean" }).notNull().default(false),
   originalSubmissionInfo: text("original_submission_info"),
   homePlacement: text("home_placement", { enum: ["none", "featured", "latest", "trending", "most_watched", "wadadli", "caribbean"] }).notNull().default("none"),
   featureStartAt: integer("feature_start_at", { mode: "timestamp_ms" }),
@@ -368,6 +370,24 @@ export const stagePerformances = sqliteTable("stage_performances", {
 }, (table) => [
   uniqueIndex("idx_stage_performances_slug").on(table.slug),
   index("idx_stage_performances_artist").on(table.artistProfileId),
+  index("idx_stage_performances_type_status").on(table.performanceType, table.status),
   index("idx_stage_performances_status_region").on(table.status, table.region),
   index("idx_stage_performances_placement_dates").on(table.homePlacement, table.featureStartAt, table.featureEndAt),
+]);
+
+export const stageTracklistEntries = sqliteTable("stage_tracklist_entries", {
+  id: text("id").primaryKey(),
+  performanceId: text("performance_id").notNull().references(() => stagePerformances.id, { onDelete: "cascade" }),
+  position: integer("position").notNull(),
+  title: text("title").notNull(),
+  externalArtistName: text("external_artist_name"),
+  artistProfileId: text("artist_profile_id").references(() => artistProfiles.id, { onDelete: "set null" }),
+  releaseId: text("release_id").references(() => releases.id, { onDelete: "set null" }),
+  externalInfo: text("external_info"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [
+  uniqueIndex("idx_stage_tracklist_performance_position").on(table.performanceId, table.position),
+  index("idx_stage_tracklist_artist").on(table.artistProfileId),
+  index("idx_stage_tracklist_release").on(table.releaseId),
 ]);

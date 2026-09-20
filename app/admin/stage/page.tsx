@@ -5,7 +5,7 @@ import { asc } from "drizzle-orm";
 import { getAdminGate } from "@/app/admin-auth";
 import { appSignInPath } from "@/app/auth/paths";
 import { getDb } from "@/db";
-import { artistProfiles, stagePerformances } from "@/db/schema";
+import { artistProfiles, releases, stagePerformances, stageTracklistEntries } from "@/db/schema";
 import { StageClient } from "./stage-client";
 
 export const dynamic = "force-dynamic";
@@ -28,12 +28,16 @@ export default async function AdminStagePage() {
   let storageReady = true;
   let performances: Array<typeof stagePerformances.$inferSelect> = [];
   let artists: Array<{ id: string; stageName: string }> = [];
+  let releasesForLinking: Array<{ id: string; title: string; artistProfileId: string }> = [];
+  let tracklistRows: Array<typeof stageTracklistEntries.$inferSelect> = [];
 
   try {
     const db = getDb();
-    [performances, artists] = await Promise.all([
+    [performances, artists, releasesForLinking, tracklistRows] = await Promise.all([
       db.select().from(stagePerformances).orderBy(asc(stagePerformances.createdAt)),
       db.select({ id: artistProfiles.id, stageName: artistProfiles.stageName }).from(artistProfiles).orderBy(asc(artistProfiles.stageName)),
+      db.select({ id: releases.id, title: releases.title, artistProfileId: releases.artistProfileId }).from(releases).orderBy(asc(releases.title)),
+      db.select().from(stageTracklistEntries).orderBy(asc(stageTracklistEntries.position)),
     ]);
   } catch {
     storageReady = false;
@@ -44,6 +48,7 @@ export default async function AdminStagePage() {
       adminAccessSource={gate.source}
       storageReady={storageReady}
       artists={artists}
+      releases={releasesForLinking}
       initialPerformances={performances.map((item) => ({
         ...item,
         performanceDate: item.performanceDate?.toISOString() ?? null,
@@ -51,6 +56,14 @@ export default async function AdminStagePage() {
         featureEndAt: item.featureEndAt?.toISOString() ?? null,
         createdAt: item.createdAt.toISOString(),
         updatedAt: item.updatedAt.toISOString(),
+        tracklist: tracklistRows.filter((entry) => entry.performanceId === item.id).map((entry) => ({
+          id: entry.id,
+          title: entry.title,
+          externalArtistName: entry.externalArtistName,
+          artistProfileId: entry.artistProfileId,
+          releaseId: entry.releaseId,
+          externalInfo: entry.externalInfo,
+        })),
       }))}
     />
   );

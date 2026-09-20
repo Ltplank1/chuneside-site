@@ -39,6 +39,7 @@ export type PublicStagePerformance = {
   homePlacement: string;
   viewCount: number;
   favoriteCount: number;
+  performanceType: "artist" | "dj";
 };
 
 function demoProfile(slug: string): PublicArtistProfile | null {
@@ -98,7 +99,11 @@ export const getPublicArtistProfile = cache(async (slug: string): Promise<Public
     )).orderBy(asc(releases.releaseDate), asc(releases.title));
 
     let publicStageRows: Array<typeof stagePerformances.$inferSelect> = [];
-    if (await isFeatureAvailable(db, "chuneside_stage", audience)) {
+    const [artistStageAvailable, djStageAvailable] = await Promise.all([
+      isFeatureAvailable(db, "chuneside_stage", audience),
+      isFeatureAvailable(db, "dj_stage", audience),
+    ]);
+    if (artistStageAvailable || djStageAvailable) {
       try {
         publicStageRows = await db.select().from(stagePerformances).where(and(
           eq(stagePerformances.artistProfileId, artist.id),
@@ -106,6 +111,7 @@ export const getPublicArtistProfile = cache(async (slug: string): Promise<Public
           isNotNull(stagePerformances.youtubeVideoId),
           inArray(stagePerformances.status, ["published", "featured"]),
         )).orderBy(asc(stagePerformances.performanceDate), asc(stagePerformances.title));
+        publicStageRows = publicStageRows.filter((performance) => performance.performanceType === "dj" ? djStageAvailable : artistStageAvailable);
       } catch {
         publicStageRows = [];
       }
@@ -158,6 +164,7 @@ export const getPublicArtistProfile = cache(async (slug: string): Promise<Public
         homePlacement: performance.homePlacement,
         viewCount: performance.viewCount,
         favoriteCount: performance.favoriteCount,
+        performanceType: performance.performanceType as "artist" | "dj",
       })),
       source: "database",
     };

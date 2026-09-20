@@ -11,6 +11,7 @@ export type SortableStagePerformance = {
   featureStartAt: string | null;
   featureEndAt: string | null;
   viewCount: number;
+  performanceType?: "artist" | "dj";
 };
 
 export function sortPublicStagePerformances<T extends SortableStagePerformance>(performances: T[], now = new Date()) {
@@ -33,15 +34,17 @@ export function isPlacementActive(performance: SortableStagePerformance, now = n
 
 export function filterPublicStagePerformances<T extends SortableStagePerformance>(
   performances: T[],
-  filters: { query?: string; region?: string; genre?: string },
+  filters: { query?: string; region?: string; genre?: string; type?: string },
 ) {
   const query = (filters.query ?? "").trim().toLowerCase();
   const region = (filters.region ?? "").trim();
   const genre = (filters.genre ?? "").trim();
+  const type = (filters.type ?? "").trim();
 
   return performances.filter((performance) => {
     const regionMatch = !region || performance.region === region;
     const genreMatch = !genre || performance.genre === genre;
+    const typeMatch = !type || performance.performanceType === type;
     const searchText = [
       performance.title,
       performance.artistStageName,
@@ -50,7 +53,7 @@ export function filterPublicStagePerformances<T extends SortableStagePerformance
       performance.region,
       ...performance.songsPerformed,
     ].join(" ").toLowerCase();
-    return regionMatch && genreMatch && (!query || searchText.includes(query));
+    return regionMatch && genreMatch && typeMatch && (!query || searchText.includes(query));
   });
 }
 

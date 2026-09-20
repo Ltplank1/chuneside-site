@@ -90,7 +90,7 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
                   {performance.thumbnailUrl ? <Image src={performance.thumbnailUrl} alt="" fill sizes="(max-width: 760px) 100vw, 360px" unoptimized /> : <PlaySquare />}
                 </div>
                 <div className="artist-stage-copy">
-                  <strong>{performance.status === "featured" ? "Featured performance" : "Stage performance"}</strong>
+                  <strong>{performance.status === "featured" ? "Featured" : "ChuneSide Stage"} - {performance.performanceType === "dj" ? "DJ performance" : "Artist performance"}</strong>
                   <h3><Link href={`/stage/${performance.slug}`}>{performance.title}</Link></h3>
                   <p>{performance.description || `${performance.genre} performance from ${performance.region}.`}</p>
                   <small>{performance.songsPerformed.length} {performance.songsPerformed.length === 1 ? "song" : "songs"} · {performance.durationMinutes ?? "--"} min · {performance.region}</small>

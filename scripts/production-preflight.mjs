@@ -38,7 +38,7 @@ try {
   failures.push(".openai/hosting.json is missing or invalid.");
 }
 
-for (const migration of ["0000_romantic_captain_flint.sql", "0001_feature_control_foundation.sql", "0002_account_controls_foundation.sql", "0003_artist_catalog_foundation.sql", "0004_release_review_foundation.sql", "0005_release_media_foundation.sql", "0006_community_announcements_foundation.sql", "0007_ai_upload_controls_foundation.sql", "0008_chuneside_stage_foundation.sql", "0009_radio_ready_submission.sql", "0010_listening_analytics.sql"]) {
+for (const migration of ["0000_romantic_captain_flint.sql", "0001_feature_control_foundation.sql", "0002_account_controls_foundation.sql", "0003_artist_catalog_foundation.sql", "0004_release_review_foundation.sql", "0005_release_media_foundation.sql", "0006_community_announcements_foundation.sql", "0007_ai_upload_controls_foundation.sql", "0008_chuneside_stage_foundation.sql", "0009_radio_ready_submission.sql", "0010_listening_analytics.sql", "0019_dj_stage.sql"]) {
   try {
     await access(path.join(projectRoot, "drizzle", migration));
   } catch {
