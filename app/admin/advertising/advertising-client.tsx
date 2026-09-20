@@ -38,13 +38,11 @@ export function AdvertisingClient({ adminAccessSource }: { adminAccessSource: "a
     }) });
     const data = await response.json() as { campaign?: Campaign; error?: string };
     if (!response.ok || !data.campaign) { setError(data.error ?? "Campaign could not be saved."); setBusy(false); return; }
-    const video = form.get("video"); const poster = form.get("poster"); let uploadError = "";
-    for (const [kind, file] of [["video", video], ["poster", poster]] as const) if (file instanceof File && file.size) {
-      const upload = new FormData(); upload.set("campaignId", data.campaign.id); upload.set("kind", kind); upload.set("file", file);
-      const uploadResponse = await fetch("/api/admin/advertising/media", { method: "POST", body: upload });
-      if (!uploadResponse.ok) { const uploadData = await uploadResponse.json() as { error?: string }; uploadError = uploadData.error ?? `${kind} upload failed.`; }
-    }
-    setBusy(false); setEditor(null); if (uploadError) setError(uploadError); else setMessage("Campaign saved."); void refresh();
+    const video = form.get("video"); const poster = form.get("poster");
+    const files = [["video", video], ["poster", poster]] as const;
+    const hasUploads = files.some(([, file]) => file instanceof File && file.size > 0);
+    setBusy(false); setEditor(null); setMessage(hasUploads ? "Campaign saved. Uploading media…" : "Campaign saved."); void refresh();
+    if (hasUploads) void uploadCampaignMedia(data.campaign.id, files, (error) => { if (error) setError(error); else setMessage("Campaign saved and media uploaded."); void refresh(); });
   }
 
   async function remove(campaign: Campaign) {
@@ -62,6 +60,19 @@ export function AdvertisingClient({ adminAccessSource }: { adminAccessSource: "a
     <section className="advertising-list">{campaigns.map((campaign) => <article key={campaign.id} className="advertising-row"><span className={`ad-status ${campaign.status}`}>{campaign.status}</span><div><h2>{campaign.name}</h2><p>{campaign.sponsorName} · {campaign.position} · weight {campaign.rotationWeight}</p><small>{campaign.stats.impression ?? 0} impressions · {campaign.stats.complete ?? 0} completes · {campaign.stats.click ?? 0} clicks</small></div><Button variant="ghost" size="icon" onClick={() => setEditor(campaign)} aria-label={`Edit ${campaign.name}`}><Pencil /></Button><Button variant="ghost" size="icon" onClick={() => void remove(campaign)} aria-label={`Delete ${campaign.name}`}><Trash2 /></Button></article>)}{!campaigns.length && <div className="admin-empty"><Megaphone /><h2>No campaigns yet</h2><p>Create a draft, upload its video, then enable Advertising from Feature Control when you are ready.</p></div>}</section>
     <Dialog open={editor !== null} onOpenChange={(open) => !open && setEditor(null)}><DialogContent className="ad-editor"><DialogHeader><DialogTitle>{editor === "new" ? "New ad campaign" : "Edit ad campaign"}</DialogTitle><DialogDescription>Use a short, lightweight video and a poster image. Campaigns stay private until active and the global Advertising flag is on.</DialogDescription></DialogHeader><form onSubmit={save}><div className="ad-form-grid"><label>Name<Input name="name" defaultValue={editor && typeof editor === "object" ? editor.name : ""} required /></label><label>Sponsor<Input name="sponsorName" defaultValue={editor && typeof editor === "object" ? editor.sponsorName : ""} required /></label><label>Status<NativeSelect name="status" defaultValue={editor && typeof editor === "object" ? editor.status : "draft"}><NativeSelectOption value="draft">Draft</NativeSelectOption><NativeSelectOption value="active">Active</NativeSelectOption><NativeSelectOption value="paused">Paused</NativeSelectOption></NativeSelect></label><label>Position<NativeSelect name="position" defaultValue={editor && typeof editor === "object" ? editor.position : "corner"}><NativeSelectOption value="corner">Corner</NativeSelectOption><NativeSelectOption value="center">Center</NativeSelectOption></NativeSelect></label><label>Mobile<NativeSelect name="mobileMode" defaultValue={editor && typeof editor === "object" ? editor.mobileMode : "bottom"}><NativeSelectOption value="bottom">Bottom</NativeSelectOption><NativeSelectOption value="top">Top</NativeSelectOption><NativeSelectOption value="hidden">Hide on mobile</NativeSelectOption></NativeSelect></label><label>Rotation weight<Input name="rotationWeight" type="number" min="1" max="100" defaultValue={editor && typeof editor === "object" ? editor.rotationWeight : 1} /></label><label>Max width (px)<Input name="maxWidth" type="number" min="280" max="720" defaultValue={editor && typeof editor === "object" ? editor.maxWidth : 420} /></label><label>Frequency cap<Input name="frequencyCapCount" type="number" min="1" max="20" defaultValue={editor && typeof editor === "object" ? editor.frequencyCapCount : 1} /></label><label>Cap window (seconds)<Input name="frequencyCapWindowSeconds" type="number" min="300" defaultValue={editor && typeof editor === "object" ? editor.frequencyCapWindowSeconds : 86400} /></label><label>Session cap<Input name="sessionCapCount" type="number" min="1" max="5" defaultValue={editor && typeof editor === "object" ? editor.sessionCapCount : 1} /></label><label>Click URL<Input name="clickUrl" type="url" defaultValue={editor && typeof editor === "object" ? editor.clickUrl ?? "" : ""} placeholder="https://example.com" /></label><DateTimeFields label="Starts" prefix="start" value={editor && typeof editor === "object" ? editor.startAt : null} /><DateTimeFields label="Ends" prefix="end" value={editor && typeof editor === "object" ? editor.endAt : null} /><label className="ad-file">Video (.mp4/.webm)<Input name="video" type="file" accept="video/mp4,video/webm,video/quicktime" /></label><label className="ad-file">Poster image<Input name="poster" type="file" accept="image/jpeg,image/png,image/webp" /></label><label className="ad-check"><input name="dismissible" type="checkbox" defaultChecked={editor && typeof editor === "object" ? editor.dismissible : true} /> Allow close button</label></div><DialogFooter><Button type="button" variant="outline" onClick={() => setEditor(null)}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Saving…" : <><Save /> Save campaign</>}</Button></DialogFooter></form></DialogContent></Dialog>
   </main>;
+}
+
+async function uploadCampaignMedia(campaignId: string, files: readonly [string, FormDataEntryValue | null][], onFinished: (error: string | null) => void) {
+  for (const [kind, file] of files) if (file instanceof File && file.size) {
+    const upload = new FormData(); upload.set("campaignId", campaignId); upload.set("kind", kind); upload.set("file", file);
+    const uploadResponse = await fetch("/api/admin/advertising/media", { method: "POST", body: upload }).catch(() => null);
+    if (!uploadResponse?.ok) {
+      const uploadData = await uploadResponse?.json().catch(() => null) as { error?: string } | null;
+      onFinished(uploadData?.error ?? `${kind} upload failed.`);
+      return;
+    }
+  }
+  onFinished(null);
 }
 
 function DateTimeFields({ label, prefix, value }: { label: string; prefix: "start" | "end"; value: string | null }) {
