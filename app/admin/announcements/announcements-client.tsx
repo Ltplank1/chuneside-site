@@ -165,6 +165,7 @@ export function AnnouncementsClient({ adminAccessSource, initialAnnouncements }:
         <Button asChild variant="outline"><Link href="/admin/site-content">Site Content</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/reviews">Review Queue</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/feature-flags">Feature Control</Link></Button>
+        <Button asChild variant="outline"><Link href="/admin/advertising">Advertising</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/ai-controls">AI Controls</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/stage">Stage</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/audit">Audit Log</Link></Button>

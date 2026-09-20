@@ -4,6 +4,7 @@ import "./analytics.css";
 import "./site-content.css";
 import "./visualizer.css";
 import "./news-reel.css";
+import "./floating-ad.css";
 import { ServiceWorkerRegistration } from "./service-worker-registration";
 import { InstallPrompt } from "./install-prompt";
 

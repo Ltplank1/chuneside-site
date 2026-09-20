@@ -401,6 +401,31 @@ test("keeps media on demand and public reads bounded by browser caching", async 
   assert.match(policy, /Load audio on demand/);
 });
 
+test("keeps floating advertising isolated from music playback and rankings", async () => {
+  const [schema, migration, player, eligible, events, component, styles, admin] = await Promise.all([
+    readFile(path.join(root, "db", "schema.ts"), "utf8"),
+    readFile(path.join(root, "drizzle", "0016_floating_video_ads.sql"), "utf8"),
+    readFile(path.join(root, "app", "page.tsx"), "utf8"),
+    readFile(path.join(root, "app", "api", "ads", "eligible", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "api", "ads", "events", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "components", "floating-video-ad.tsx"), "utf8"),
+    readFile(path.join(root, "app", "floating-ad.css"), "utf8"),
+    readFile(path.join(root, "app", "admin", "advertising", "advertising-client.tsx"), "utf8"),
+  ]);
+  assert.match(schema, /export const adCampaigns/);
+  assert.match(schema, /export const adEvents/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS ad_campaigns/);
+  assert.match(eligible, /frequencyCapWindowSeconds/);
+  assert.match(eligible, /rotationWeight/);
+  assert.match(events, /eventType/);
+  assert.match(component, /videoRef\.current\.muted = true/);
+  assert.match(component, /preload="none"/);
+  assert.match(player, /<FloatingVideoAd enabled=\{featureOn\("advertising"/);
+  assert.match(styles, /floating-video-ad-exiting/);
+  assert.match(admin, /Save campaign/);
+  assert.match(admin, /Video \(\.mp4\/\.webm\)/);
+});
+
 test("classifies AI releases for configurable upload limits", async () => {
   const {
     classificationQualifiesForRestriction,

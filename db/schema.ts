@@ -259,6 +259,52 @@ export const visualizerSettings = sqliteTable("visualizer_settings", {
   updatedBy: text("updated_by"),
 });
 
+export const adCampaigns = sqliteTable("ad_campaigns", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  sponsorName: text("sponsor_name").notNull(),
+  status: text("status", { enum: ["draft", "active", "paused"] }).notNull().default("draft"),
+  startAt: integer("start_at", { mode: "timestamp_ms" }),
+  endAt: integer("end_at", { mode: "timestamp_ms" }),
+  rotationWeight: integer("rotation_weight").notNull().default(1),
+  position: text("position", { enum: ["corner", "center"] }).notNull().default("corner"),
+  mobileMode: text("mobile_mode", { enum: ["bottom", "top", "hidden"] }).notNull().default("bottom"),
+  maxWidth: integer("max_width").notNull().default(420),
+  frequencyCapCount: integer("frequency_cap_count").notNull().default(1),
+  frequencyCapWindowSeconds: integer("frequency_cap_window_seconds").notNull().default(86400),
+  sessionCapCount: integer("session_cap_count").notNull().default(1),
+  clickUrl: text("click_url"),
+  dismissible: integer("dismissible", { mode: "boolean" }).notNull().default(true),
+  videoObjectKey: text("video_object_key"),
+  videoContentType: text("video_content_type"),
+  videoSizeBytes: integer("video_size_bytes"),
+  posterObjectKey: text("poster_object_key"),
+  posterContentType: text("poster_content_type"),
+  posterSizeBytes: integer("poster_size_bytes"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  updatedBy: text("updated_by"),
+}, (table) => [
+  index("idx_ad_campaigns_status_dates").on(table.status, table.startAt, table.endAt),
+  index("idx_ad_campaigns_updated").on(table.updatedAt),
+]);
+
+export const adEvents = sqliteTable("ad_events", {
+  id: text("id").primaryKey(),
+  campaignId: text("campaign_id").notNull().references(() => adCampaigns.id, { onDelete: "cascade" }),
+  memberId: text("member_id").references(() => members.id, { onDelete: "set null" }),
+  visitorKeyHash: text("visitor_key_hash"),
+  sessionKeyHash: text("session_key_hash"),
+  eventType: text("event_type", { enum: ["impression", "start", "complete", "click", "close"] }).notNull(),
+  durationSeconds: integer("duration_seconds"),
+  occurredAt: integer("occurred_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [
+  index("idx_ad_events_campaign_date").on(table.campaignId, table.occurredAt),
+  index("idx_ad_events_visitor_campaign").on(table.visitorKeyHash, table.campaignId, table.occurredAt),
+  index("idx_ad_events_session_campaign").on(table.sessionKeyHash, table.campaignId, table.occurredAt),
+  index("idx_ad_events_type_date").on(table.eventType, table.occurredAt),
+]);
+
 export const aiArtistExceptions = sqliteTable("ai_artist_exceptions", {
   id: text("id").primaryKey(),
   artistProfileId: text("artist_profile_id").notNull().references(() => artistProfiles.id, { onDelete: "cascade" }),
