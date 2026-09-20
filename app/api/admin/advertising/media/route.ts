@@ -5,7 +5,7 @@ import { requireAdminUser } from "@/app/admin-auth";
 import { getDb } from "@/db";
 import { adCampaigns, adminAuditLogs } from "@/db/schema";
 import { getMediaBucket, type MediaMultipartPart } from "@/lib/media-storage";
-import { validateMediaFile } from "@/lib/media-policy";
+import { mediaRules, validateMediaFile } from "@/lib/media-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,11 @@ export async function POST(request: Request) {
     if (chunkIndex === 0 && file.size < totalSize && totalChunks === 1) return NextResponse.json({ error: "The media upload is incomplete. Please try again." }, { status: 400 });
     if (chunkIndex > 0 && (typeof uploadId !== "string" || !uploadId)) return NextResponse.json({ error: "The media upload session is missing. Please try again." }, { status: 400 });
     if (!contentType) return NextResponse.json({ error: "Unsupported video file type. Choose an MP4 or WebM file." }, { status: 400 });
-    const error = validateMediaFile(kind === "video" ? "video" : "cover", { size: totalSize, type: contentType }, header);
+    const mediaKind = kind === "video" ? "video" : "cover";
+    const rule = mediaRules[mediaKind];
+    if (!rule.contentTypes.includes(contentType as never)) return NextResponse.json({ error: `Unsupported ${mediaKind} file type.` }, { status: 400 });
+    if (totalSize < 1 || totalSize > rule.maxBytes) return NextResponse.json({ error: mediaKind === "video" ? "Video files must be 100 MB or smaller." : "Cover files must be 8 MB or smaller." }, { status: 400 });
+    const error = chunkIndex === 0 ? validateMediaFile(mediaKind, { size: totalSize, type: contentType }, header) : null;
     if (error) return NextResponse.json({ error }, { status: 400 });
     const db = getDb();
     const [campaign] = await db.select({ id: adCampaigns.id }).from(adCampaigns).where(eq(adCampaigns.id, id)).limit(1);
