@@ -20,6 +20,7 @@ export async function GET() {
 
     const rows = await db.select({
       id: releases.legacyTrackId,
+      releaseId: releases.id,
       title: releases.title,
       artist: artistProfiles.stageName,
       artistSlug: artistProfiles.slug,
@@ -48,6 +49,7 @@ export async function GET() {
 
     const tracks: PublicTrack[] = rows.map((row) => ({
       id: row.id as number,
+      releaseId: row.releaseId,
       title: row.title,
       artist: row.artist,
       artistSlug: row.artistSlug,

@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -102,7 +102,36 @@ export default function Home() {
   const [stagePerformances, setStagePerformances] = useState<PublicStagePerformance[]>([]);
   const [catalogUrlReady, setCatalogUrlReady] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const listenerTokenRef = useRef<string | null>(null);
+  const listeningSessionRef = useRef<{ eventId: string; releaseId: string } | null>(null);
   const activeAudioUrl = tracks.find((track) => track.id === activeId)?.audioUrl ?? null;
+
+  const sendListeningEvent = useCallback(async (action: "start" | "progress" | "complete") => {
+    const activeTrack = tracks.find((track) => track.id === activeId);
+    const audio = audioRef.current;
+    if (!activeTrack?.releaseId || !audio) return;
+    if (!listenerTokenRef.current) {
+      const stored = window.localStorage.getItem("chuneside-listener-id");
+      const token = stored || crypto.randomUUID();
+      window.localStorage.setItem("chuneside-listener-id", token);
+      listenerTokenRef.current = token;
+    }
+    if (!listeningSessionRef.current || listeningSessionRef.current.releaseId !== activeTrack.releaseId) {
+      listeningSessionRef.current = { eventId: crypto.randomUUID(), releaseId: activeTrack.releaseId };
+    }
+    await fetch("/api/listening", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        eventId: listeningSessionRef.current.eventId,
+        releaseId: activeTrack.releaseId,
+        listenerToken: listenerTokenRef.current,
+        action,
+        positionSeconds: Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
+      }),
+      keepalive: action !== "start",
+    }).catch(() => undefined);
+  }, [activeId, tracks]);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,6 +211,15 @@ export default function Home() {
     if (playing) void audio.play().catch(() => setPlaying(false));
     else audio.pause();
   }, [activeAudioUrl, playing]);
+  useEffect(() => {
+    if (!playing || !activeAudioUrl) return;
+    void sendListeningEvent("start");
+    const timer = window.setInterval(() => void sendListeningEvent("progress"), 10000);
+    return () => {
+      window.clearInterval(timer);
+      void sendListeningEvent("progress");
+    };
+  }, [activeAudioUrl, playing, sendListeningEvent]);
   useEffect(() => {
     const timer = window.setInterval(() => setHeroIndex((index) => (index + 1) % videos.length), 9000);
     return () => window.clearInterval(timer);
@@ -357,7 +395,7 @@ export default function Home() {
 
     <Dialog open={memberGate} onOpenChange={setMemberGate}><DialogContent className="member-dialog"><DialogHeader><DialogTitle>Join ChuneSide to make it count</DialogTitle><DialogDescription>Listening is open to guests. Likes and artist follows are reserved for signed-in members so every chart position represents a unique person.</DialogDescription></DialogHeader><div className="member-benefits"><span><Heart /> One verified Like per song</span><span><Trophy /> Help shape monthly rankings</span><span><UserPlus /> Follow your favourite artists</span></div><Button asChild><a href={memberSignInPath}>Sign in or create an account <ArrowRight /></a></Button><small>Free membership. Your email is used only to identify your unique ChuneSide account.</small></DialogContent></Dialog>
 
-    <audio ref={audioRef} src={active?.audioUrl ?? undefined} onTimeUpdate={(event) => { const audio = event.currentTarget; if (audio.duration) setProgress(audio.currentTime / audio.duration * 100); }} onEnded={() => moveTrack(1)} onError={() => setPlaying(false)} preload="metadata" />
+      <audio ref={audioRef} src={active?.audioUrl ?? undefined} onTimeUpdate={(event) => { const audio = event.currentTarget; if (audio.duration) setProgress(audio.currentTime / audio.duration * 100); }} onEnded={() => { void sendListeningEvent("complete"); setPlaying(false); listeningSessionRef.current = null; moveTrack(1); }} onError={() => setPlaying(false)} preload="metadata" />
     <aside className="now-playing" aria-label={active?.audioUrl ? "Audio player" : "Catalogue player"}><div className={`mini-cover bg-gradient-to-br ${active?.colors ?? "from-[#242832] via-[#171a21] to-[#090a0d]"}`}>{active?.coverImageUrl ? <Image src={active.coverImageUrl} alt="" fill sizes="46px" unoptimized /> : active?.mark ?? <Disc3 />}</div><div className="now-meta"><strong>{active?.title ?? "No approved chunes"}</strong><span>{active ? `${active.artist} · ${active.audioUrl ? "Now playing" : "Preview mode"}` : "The live catalogue is being prepared."}</span></div><div className="player-controls"><button disabled={!active} onClick={() => moveTrack(-1)} aria-label="Previous track"><SkipBack /></button><button className="main-play" disabled={!active} onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}>{playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button><button disabled={!active} onClick={() => moveTrack(1)} aria-label="Next track"><SkipForward /></button></div><input className="progress-range" type="range" min="0" max="100" step=".1" value={progress} disabled={!active} onChange={(event) => seekTrack(Number(event.target.value))} aria-label="Track progress" /><span className="time">{formatPlayerTime(activeDuration * progress / 100)} / {active?.duration ?? "--"}</span><label className="volume"><Volume2 /><input type="range" min="0" max="100" value={volume} onChange={(event) => setVolume(Number(event.target.value))} aria-label="Volume" /></label><ChevronDown className="queue" /></aside>
   </main>;
 }

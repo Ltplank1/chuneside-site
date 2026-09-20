@@ -120,6 +120,42 @@ test("keeps the public catalogue fallback complete and formats duration", async 
   assert.equal(parseTrackDuration("3:15"), 195);
 });
 
+test("defines qualified listening without changing like-based rankings", async () => {
+  const policy = await vite.ssrLoadModule("/lib/listening-policy.ts");
+  assert.equal(policy.qualifiedThreshold(180), 30);
+  assert.equal(policy.qualifiedThreshold(20), 20);
+  assert.equal(policy.qualifiesListening({ durationSeconds: 29, trackDurationSeconds: 180, completed: false }), false);
+  assert.equal(policy.qualifiesListening({ durationSeconds: 30, trackDurationSeconds: 180, completed: false }), true);
+  assert.equal(policy.qualifiesListening({ durationSeconds: 19, trackDurationSeconds: 20, completed: true }), false);
+  assert.equal(policy.qualifiesListening({ durationSeconds: 20, trackDurationSeconds: 20, completed: true }), true);
+  assert.equal(policy.rapidRepeatBlocked(new Date(Date.now() - 11 * 60 * 1000), new Date()), false);
+  assert.equal(policy.rapidRepeatBlocked(new Date(Date.now() - 2 * 60 * 1000), new Date()), true);
+  const home = await readFile(path.join(root, "app", "page.tsx"), "utf8");
+  const memberState = await readFile(path.join(root, "app", "api", "member-state", "route.ts"), "utf8");
+  assert.match(home, /\/api\/listening/);
+  assert.match(home, /chuneside-listener-id/);
+  assert.match(memberState, /songLikes/);
+  assert.doesNotMatch(memberState, /listeningEvents/);
+});
+
+test("exposes protected listening analytics with date filters and song drill-down", async () => {
+  const [schema, migration, analyticsRoute, analyticsPage, analyticsClient] = await Promise.all([
+    readFile(path.join(root, "db", "schema.ts"), "utf8"),
+    readFile(path.join(root, "drizzle", "0010_listening_analytics.sql"), "utf8"),
+    readFile(path.join(root, "app", "api", "admin", "analytics", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "admin", "analytics", "page.tsx"), "utf8"),
+    readFile(path.join(root, "app", "admin", "analytics", "analytics-client.tsx"), "utf8"),
+  ]);
+  assert.match(schema, /listeningEvents/);
+  assert.match(migration, /CREATE TABLE `listening_events`/);
+  assert.match(analyticsRoute, /getAdminGate/);
+  assert.match(analyticsRoute, /from/);
+  assert.match(analyticsPage, /admin\/analytics/);
+  assert.match(analyticsClient, /Song reach/);
+  assert.match(analyticsClient, /setSelectedReleaseId/);
+  assert.match(analyticsClient, /Qualified stream policy/);
+});
+
 test("provides a stable artist slug for every demo track", async () => {
   const { demoTracks } = await vite.ssrLoadModule("/lib/public-catalog.ts");
 

@@ -2,6 +2,7 @@ export type DiscoveryLane = "wadadli" | "caribbean" | "ai" | "world";
 
 export type PublicTrack = {
   id: number;
+  releaseId?: string | null;
   title: string;
   artist: string;
   artistSlug: string;

@@ -74,6 +74,7 @@ export function ReviewQueueClient({ adminAccessSource, mediaRequired, initialRev
       <nav className="admin-toolbar admin-nav-actions" aria-label="Admin sections">
         <Button asChild variant="outline"><Link href="/admin/accounts">Accounts</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/catalog">Catalogue</Link></Button>
+        <Button asChild variant="outline"><Link href="/admin/analytics">Analytics</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/feature-flags">Feature Control</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/announcements">News Bar</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/ai-controls">AI Controls</Link></Button>

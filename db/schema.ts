@@ -29,6 +29,25 @@ export const songLikes = sqliteTable("song_likes", {
   index("idx_song_likes_created_track").on(table.createdAt, table.trackId),
 ]);
 
+export const listeningEvents = sqliteTable("listening_events", {
+  id: text("id").primaryKey(),
+  releaseId: text("release_id").notNull().references(() => releases.id, { onDelete: "cascade" }),
+  memberId: text("member_id").references(() => members.id, { onDelete: "set null" }),
+  listenerType: text("listener_type", { enum: ["member", "guest"] }).notNull(),
+  listenerKeyHash: text("listener_key_hash").notNull(),
+  durationSeconds: integer("duration_seconds").notNull().default(0),
+  completed: integer("completed", { mode: "boolean" }).notNull().default(false),
+  qualified: integer("qualified", { mode: "boolean" }).notNull().default(false),
+  repeatListening: integer("repeat_listening", { mode: "boolean" }).notNull().default(false),
+  qualifiedAt: integer("qualified_at", { mode: "timestamp_ms" }),
+  startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+  lastSeenAt: integer("last_seen_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [
+  index("idx_listening_events_release_date").on(table.releaseId, table.startedAt),
+  index("idx_listening_events_listener_release").on(table.listenerKeyHash, table.releaseId, table.startedAt),
+  index("idx_listening_events_qualified").on(table.qualified, table.startedAt),
+]);
+
 export const artistFollows = sqliteTable("artist_follows", {
   memberId: text("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
   artist: text("artist").notNull(),

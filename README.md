@@ -70,6 +70,8 @@ drizzle/0005_release_media_foundation.sql
 drizzle/0006_community_announcements_foundation.sql
 drizzle/0007_ai_upload_controls_foundation.sql
 drizzle/0008_chuneside_stage_foundation.sql
+drizzle/0009_radio_ready_submission.sql
+drizzle/0010_listening_analytics.sql
 ```
 
 After intentionally changing `db/schema.ts`, generate and inspect a new migration:
