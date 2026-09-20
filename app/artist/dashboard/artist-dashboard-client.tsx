@@ -804,7 +804,8 @@ async function encodeWavToMp3(file: File) {
     const previousGlobals = new Map<string, unknown>();
     for (const [name, module] of compatibilityModules) {
       previousGlobals.set(name, globalScope[name]);
-      globalScope[name] = module.default;
+      const moduleExports = module as unknown as { default?: unknown; "module.exports"?: unknown };
+      globalScope[name] = moduleExports.default ?? moduleExports["module.exports"];
     }
     const lame = await import("lamejs");
     try {
