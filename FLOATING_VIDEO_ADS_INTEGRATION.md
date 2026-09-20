@@ -7,6 +7,7 @@ This document maps a future sponsor-video system onto the current ChuneSide arch
 The feature should feel like a restrained widescreen video window, not a browser pop-up. Music and core discovery always have priority.
 
 - The ad may appear centered or in a safe corner, but never cover the primary player, navigation, dialogs, forms, or important release actions.
+- The floating window should fade in smoothly when it appears and fade out smoothly after completion or dismissal. The transition must be short, subtle, and disabled or reduced to an instant state under `prefers-reduced-motion`.
 - If ChuneSide music is playing, the ad must be muted.
 - If music starts while an ad is already playing, mute the ad immediately. Never pause, stop, seek, restart, or otherwise control the music.
 - Once muted because of music, the ad must never restore audio automatically. A future explicit user control may unmute it only while music is stopped.
@@ -133,6 +134,7 @@ An impression should count only after the ad has remained visible for a defined 
 - Mobile: use a smaller bottom or top slot that clears the fixed Now Playing bar, browser safe-area insets, and the News Bar. Do not cover the primary play controls.
 - Use `role="region"`, an accessible label, a visible close button, captions when speech exists, and no autoplay audio.
 - Respect `prefers-reduced-motion`; reduce transitions and never require animation to understand or dismiss the ad.
+- Use a small opacity transition for entry and exit, with no scale bounce or layout shift. Completion should trigger the fade-out before the slot is removed from the DOM.
 - Do not trap keyboard focus. The close button must be reachable, and the ad must not shift page layout unexpectedly.
 
 ## Admin integration
@@ -178,4 +180,3 @@ The existing Admin Analytics page can later receive a separate advertising panel
 - No use of ad events in Likes, qualified streams, charts, recommendations, or artist analytics.
 - No third-party ad network dependency is required for the first version.
 - No ad code should load on the initial page when the global flag is off.
-
