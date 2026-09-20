@@ -2,6 +2,7 @@
 .ad-editor form{display:grid;gap:1rem}
 .ad-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}
 .ad-form-grid label{display:grid;gap:.35rem;color:#aeb1b8;font-size:.75rem;font-weight:800}
+.ad-datetime-field{display:grid;gap:.35rem;color:#aeb1b8;font-size:.75rem;font-weight:800}.ad-datetime-field>div{display:grid;grid-template-columns:1.2fr .8fr;gap:.55rem}.ad-datetime-field label{font-size:.65rem;color:#858891}.ad-datetime-field label span{font-size:.62rem;text-transform:uppercase}
 .ad-form-grid input,.ad-form-grid select{color:#fff;background:#171920;border-color:#3a3d46}
 .ad-check{display:flex!important;align-items:center;gap:.5rem;min-height:42px;padding:.55rem .7rem;border:1px solid #3a3d46;background:#171920}
 .ad-check input{width:17px;height:17px;accent-color:var(--primary)}
