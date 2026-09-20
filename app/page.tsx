@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { demoTracks, parseTrackDuration, type PublicTrack } from "@/lib/public-catalog";
 import { defaultSiteContent, publicContentStyle, type SiteContentStyle } from "@/lib/site-content-shared";
+import { visualizerThemes, type VisualizerTheme } from "@/lib/visualizer";
 
 const videos = [
   { eyebrow: "ChuneSide premiere · 268", artist: "Kaia Rivers", title: "Golden Hour", note: "Featured music video", tint: "hero-a", trackId: 1 },
@@ -61,6 +62,7 @@ type PublicStagePerformance = {
 };
 
 type PublicSiteContent = Record<string, { value: string; style: SiteContentStyle }>;
+type PublicVisualizerSettings = { enabled: boolean; defaultTheme: VisualizerTheme; allowedThemes: VisualizerTheme[] };
 const defaultCopy = defaultSiteContent() as PublicSiteContent;
 
 function Cover({ track, large = false }: { track: PublicTrack; large?: boolean }) {
@@ -105,6 +107,10 @@ export default function Home() {
   const [announcements, setAnnouncements] = useState<PublicAnnouncement[]>([]);
   const [stagePerformances, setStagePerformances] = useState<PublicStagePerformance[]>([]);
   const [siteCopy, setSiteCopy] = useState<PublicSiteContent>(defaultCopy);
+  const [visualizerSettings, setVisualizerSettings] = useState<PublicVisualizerSettings | null>(null);
+  const [visualizerMemberEnabled, setVisualizerMemberEnabled] = useState(true);
+  const [visualizerTheme, setVisualizerTheme] = useState<VisualizerTheme>("bars");
+  const [visualizerLevel, setVisualizerLevel] = useState(0.35);
   const [catalogUrlReady, setCatalogUrlReady] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const listenerTokenRef = useRef<string | null>(null);
@@ -170,6 +176,15 @@ export default function Home() {
     fetch("/api/site-content")
       .then((response) => response.ok ? response.json() : null)
       .then((data) => data?.content && !cancelled && setSiteCopy({ ...defaultCopy, ...data.content }));
+    fetch("/api/visualizer")
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (!cancelled && data?.enabled) {
+          setVisualizerSettings(data);
+          setVisualizerTheme((window.localStorage.getItem("chuneside-visualizer-theme") as VisualizerTheme) || data.defaultTheme);
+          setVisualizerMemberEnabled(window.localStorage.getItem("chuneside-visualizer-enabled") !== "false");
+        }
+      });
     fetch("/api/stage?placement=home&limit=3")
       .then((response) => response.ok ? response.json() : null)
       .then((data) => data?.available && Array.isArray(data?.performances) && !cancelled && setStagePerformances(data.performances));
@@ -229,6 +244,16 @@ export default function Home() {
     };
   }, [activeAudioUrl, playing, sendListeningEvent]);
   useEffect(() => {
+    if (!visualizerSettings?.enabled || !visualizerMemberEnabled || !playing) return;
+    let frame = 0;
+    const animate = (time: number) => {
+      setVisualizerLevel((Math.sin(time / 180) + 1) / 2);
+      frame = window.requestAnimationFrame(animate);
+    };
+    frame = window.requestAnimationFrame(animate);
+    return () => window.cancelAnimationFrame(frame);
+  }, [playing, visualizerMemberEnabled, visualizerSettings?.enabled]);
+  useEffect(() => {
     const timer = window.setInterval(() => setHeroIndex((index) => (index + 1) % videos.length), 9000);
     return () => window.clearInterval(timer);
   }, []);
@@ -258,6 +283,9 @@ export default function Home() {
   const chunesideStageOn = featureOn("chuneside_stage", false);
   const copy = (key: string, fallback: string) => siteCopy[key]?.value ?? fallback;
   const copyStyle = (key: string) => publicContentStyle(siteCopy[key]?.style ?? defaultCopy[key]?.style ?? defaultCopy["home.hero.description"].style);
+  const visualizerOn = Boolean(visualizerSettings?.enabled && visualizerMemberEnabled && playing);
+  const setMemberVisualizerEnabled = (enabled: boolean) => { setVisualizerMemberEnabled(enabled); window.localStorage.setItem("chuneside-visualizer-enabled", String(enabled)); };
+  const setMemberVisualizerTheme = (theme: VisualizerTheme) => { setVisualizerTheme(theme); window.localStorage.setItem("chuneside-visualizer-theme", theme); };
   // These server routes choose Supabase in production and retain the local fallback when it is not configured.
   const memberSignInPath = "/auth/sign-in?returnTo=%2F%23charts";
   const memberSignOutPath = "/auth/sign-out?returnTo=%2F";
@@ -421,7 +449,7 @@ export default function Home() {
     <Dialog open={memberGate} onOpenChange={setMemberGate}><DialogContent className="member-dialog"><DialogHeader><DialogTitle style={copyStyle("membership.dialog_title")}>{copy("membership.dialog_title", "Join ChuneSide to make it count")}</DialogTitle><DialogDescription style={copyStyle("membership.dialog_description")}>{copy("membership.dialog_description", "Listening is open to guests. Likes and artist follows are reserved for signed-in members so every chart position represents a unique person.")}</DialogDescription></DialogHeader><div className="member-benefits"><span><Heart /> One verified Like per song</span><span><Trophy /> Help shape monthly rankings</span><span><UserPlus /> Follow your favourite artists</span></div><Button asChild><a href={memberSignInPath}>Sign in or create an account <ArrowRight /></a></Button><small>Free membership. Your email is used only to identify your unique ChuneSide account.</small></DialogContent></Dialog>
 
       <audio ref={audioRef} src={active?.audioUrl ?? undefined} onTimeUpdate={(event) => { const audio = event.currentTarget; if (audio.duration) setProgress(audio.currentTime / audio.duration * 100); }} onEnded={() => { void sendListeningEvent("complete"); setPlaying(false); listeningSessionRef.current = null; moveTrack(1); }} onError={() => setPlaying(false)} preload="metadata" />
-    <aside className="now-playing" aria-label={active?.audioUrl ? "Audio player" : "Catalogue player"}><div className={`mini-cover bg-gradient-to-br ${active?.colors ?? "from-[#242832] via-[#171a21] to-[#090a0d]"}`}>{active?.coverImageUrl ? <Image src={active.coverImageUrl} alt="" fill sizes="46px" unoptimized /> : active?.mark ?? <Disc3 />}</div><div className="now-meta"><strong>{active?.title ?? "No approved chunes"}</strong><span>{active ? `${active.artist} · ${active.audioUrl ? "Now playing" : "Preview mode"}` : "The live catalogue is being prepared."}</span></div><div className="player-controls"><button disabled={!active} onClick={() => moveTrack(-1)} aria-label="Previous track"><SkipBack /></button><button className="main-play" disabled={!active} onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}>{playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button><button disabled={!active} onClick={() => moveTrack(1)} aria-label="Next track"><SkipForward /></button></div><input className="progress-range" type="range" min="0" max="100" step=".1" value={progress} disabled={!active} onChange={(event) => seekTrack(Number(event.target.value))} aria-label="Track progress" /><span className="time">{formatPlayerTime(activeDuration * progress / 100)} / {active?.duration ?? "--"}</span><label className="volume"><Volume2 /><input type="range" min="0" max="100" value={volume} onChange={(event) => setVolume(Number(event.target.value))} aria-label="Volume" /></label><ChevronDown className="queue" /></aside>
+    <aside className="now-playing" aria-label={active?.audioUrl ? "Audio player" : "Catalogue player"}><div className={`mini-cover bg-gradient-to-br ${active?.colors ?? "from-[#242832] via-[#171a21] to-[#090a0d]"}`}>{active?.coverImageUrl ? <Image src={active.coverImageUrl} alt="" fill sizes="46px" unoptimized /> : active?.mark ?? <Disc3 />}</div>{visualizerSettings?.enabled && <div className={`now-visualizer theme-${visualizerTheme} ${visualizerOn ? "is-playing" : ""}`} style={{ "--visualizer-level": visualizerLevel } as CSSProperties} aria-label="Visualizer"><i /><i /><i /><i /><i /></div>}<div className="now-meta"><strong>{active?.title ?? "No approved chunes"}</strong><span>{active ? `${active.artist} · ${active.audioUrl ? "Now playing" : "Preview mode"}` : "The live catalogue is being prepared."}</span></div><div className="player-controls"><button disabled={!active} onClick={() => moveTrack(-1)} aria-label="Previous track"><SkipBack /></button><button className="main-play" disabled={!active} onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}>{playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button><button disabled={!active} onClick={() => moveTrack(1)} aria-label="Next track"><SkipForward /></button></div>{visualizerSettings?.enabled && <div className="visualizer-member-controls"><button type="button" onClick={() => setMemberVisualizerEnabled(!visualizerMemberEnabled)} aria-label={visualizerMemberEnabled ? "Turn visualizer off" : "Turn visualizer on"} title={visualizerMemberEnabled ? "Turn visualizer off" : "Turn visualizer on"}><Sparkles /></button><select value={visualizerTheme} onChange={(event) => setMemberVisualizerTheme(event.target.value as VisualizerTheme)} aria-label="Visualizer style">{visualizerSettings.allowedThemes.filter((theme) => visualizerThemes.includes(theme)).map((theme) => <option key={theme} value={theme}>{theme}</option>)}</select></div>}<input className="progress-range" type="range" min="0" max="100" step=".1" value={progress} disabled={!active} onChange={(event) => seekTrack(Number(event.target.value))} aria-label="Track progress" /><span className="time">{formatPlayerTime(activeDuration * progress / 100)} / {active?.duration ?? "--"}</span><label className="volume"><Volume2 /><input type="range" min="0" max="100" value={volume} onChange={(event) => setVolume(Number(event.target.value))} aria-label="Volume" /></label><ChevronDown className="queue" /></aside>
   </main>;
 }
 

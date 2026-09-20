@@ -338,6 +338,26 @@ test("registers configurable admin-test controls for Stage, AI limits, and the n
   assert.equal(publicSnapshot.chuneside_stage.available, false);
 });
 
+test("keeps the ChuneSide Visualizer lightweight, opt-in, and isolated from playback analytics", async () => {
+  const [visualizer, home, migration, adminRoute, adminPage] = await Promise.all([
+    readFile(path.join(root, "lib", "visualizer.ts"), "utf8"),
+    readFile(path.join(root, "app", "page.tsx"), "utf8"),
+    readFile(path.join(root, "drizzle", "0013_visualizer_settings.sql"), "utf8"),
+    readFile(path.join(root, "app", "api", "admin", "visualizer", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "admin", "visualizer", "visualizer-client.tsx"), "utf8"),
+  ]);
+
+  assert.match(visualizer, /visualizerThemes = \["pulse", "bars", "orbit"\]/);
+  assert.match(migration, /CREATE TABLE `visualizer_settings`/);
+  assert.match(adminRoute, /visualizer\.update/);
+  assert.match(adminRoute, /visualizer\.restore/);
+  assert.match(adminPage, /Enable for members/);
+  assert.match(adminPage, /Allowed styles/);
+  assert.match(home, /chuneside-visualizer-enabled/);
+  assert.match(home, /className=\{`now-visualizer/);
+  assert.doesNotMatch(home, /sendListeningEvent\("visualizer/);
+});
+
 test("classifies AI releases for configurable upload limits", async () => {
   const {
     classificationQualifiesForRestriction,

@@ -235,6 +235,15 @@ export const aiUploadSettings = sqliteTable("ai_upload_settings", {
   updatedBy: text("updated_by"),
 });
 
+export const visualizerSettings = sqliteTable("visualizer_settings", {
+  id: text("id").primaryKey(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+  defaultTheme: text("default_theme", { enum: ["pulse", "bars", "orbit"] }).notNull().default("bars"),
+  allowedThemesJson: text("allowed_themes_json").notNull().default('["pulse","bars","orbit"]'),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  updatedBy: text("updated_by"),
+});
+
 export const aiArtistExceptions = sqliteTable("ai_artist_exceptions", {
   id: text("id").primaryKey(),
   artistProfileId: text("artist_profile_id").notNull().references(() => artistProfiles.id, { onDelete: "cascade" }),
