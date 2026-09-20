@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { ContributorRoleField, CountryRegionField, DurationField, GenreField, MoodField } from "@/components/forms/shared-metadata-fields";
 import type { AdminArtist, AdminRelease, CatalogSaveResponse, OwnerAccount } from "./catalog-types";
 
 type EditorState =
@@ -52,7 +53,7 @@ export function CatalogEditor({ editor, artists, ownerAccounts, onClose, onSaved
           slug: form.get("slug"),
           biography: form.get("biography"),
           countryRegion: form.get("countryRegion"),
-          primaryGenre: form.get("primaryGenre"),
+          primaryGenre: presetFieldValue(form, "primaryGenre"),
           profilePhotoUrl: form.get("profilePhotoUrl"),
           coverImageUrl: form.get("coverImageUrl"),
           websiteUrl: form.get("websiteUrl"),
@@ -71,12 +72,12 @@ export function CatalogEditor({ editor, artists, ownerAccounts, onClose, onSaved
           title: form.get("title"),
           slug: form.get("slug"),
           featuringArtist: form.get("featuringArtist"),
-          genre: form.get("genre"),
+          genre: presetFieldValue(form, "genre"),
           region: form.get("region"),
           discoveryLane: form.get("discoveryLane"),
           creationType: form.get("creationType"),
           aiClassification: form.get("aiClassification"),
-          mood: form.get("mood"),
+          mood: presetFieldValue(form, "mood"),
           durationSeconds: form.get("durationSeconds") ? Number(form.get("durationSeconds")) : null,
           explicitStatus: form.get("explicitStatus"),
           downloadEligibility: form.get("downloadEligibility"),
@@ -140,8 +141,8 @@ function ArtistFields({ artist, socialLinks, ownerAccounts }: { artist: AdminArt
     <div className="catalog-form-grid">
       <Field label="Artist name"><Input name="stageName" required maxLength={120} defaultValue={artist?.stageName ?? ""} /></Field>
       <Field label="Profile slug"><Input name="slug" required maxLength={80} placeholder="artist-name" defaultValue={artist?.slug ?? ""} /></Field>
-      <Field label="Country or region"><Input name="countryRegion" required maxLength={120} defaultValue={artist?.countryRegion ?? ""} /></Field>
-      <Field label="Primary genre"><Input name="primaryGenre" required maxLength={80} defaultValue={artist?.primaryGenre ?? ""} /></Field>
+      <CountryRegionField name="countryRegion" label="Country/Region" value={artist?.countryRegion ?? ""} required />
+      <GenreField name="primaryGenre" value={artist?.primaryGenre ?? ""} required />
       <Field label="Visibility"><Choice name="visibility" value={artist?.visibility ?? "draft"} options={["draft", "public", "disabled"]} /></Field>
       <Field label="Verification"><Choice name="verificationStatus" value={artist?.verificationStatus ?? "unverified"} options={["unverified", "pending", "verified", "rejected"]} /></Field>
       <Field label="Owner account"><Choice name="ownerMemberId" value={artist?.ownerMemberId ?? "__none__"} options={[["__none__", "Not linked"], ...ownerAccounts.map((account): [string, string] => [account.id, account.displayName + " · " + account.email])]} /></Field>
@@ -174,13 +175,13 @@ function ReleaseFields({ release, artists, artistCredits, setArtistCredits, addi
       <Field label="Release slug"><Input name="slug" required maxLength={80} placeholder="release-title" defaultValue={release?.slug ?? ""} /></Field>
       <Field label="Featuring artist"><Input name="featuringArtist" maxLength={160} defaultValue={release?.featuringArtist ?? ""} /></Field>
       <CreditFields artists={artists} artistCredits={artistCredits} setArtistCredits={setArtistCredits} additionalCredits={additionalCredits} setAdditionalCredits={setAdditionalCredits} />
-      <Field label="Genre"><Input name="genre" required maxLength={80} defaultValue={release?.genre ?? ""} /></Field>
-      <Field label="Region"><Input name="region" required maxLength={120} defaultValue={release?.region ?? ""} /></Field>
+      <GenreField name="genre" value={release?.genre ?? ""} required />
+      <CountryRegionField name="region" value={release?.region ?? ""} required />
       <Field label="Discovery lane"><Choice name="discoveryLane" value={release?.discoveryLane ?? "wadadli"} options={["wadadli", "caribbean", "ai", "world"]} /></Field>
       <Field label="Creation disclosure"><Choice name="creationType" value={release?.creationType ?? "artist_made"} options={[["artist_made", "Artist-made"], ["ai_assisted", "AI-assisted"]]} /></Field>
       <Field label="AI classification"><Choice name="aiClassification" value={release?.aiClassification ?? "human_created"} options={[["human_created", "Human-created"], ["ai_assisted", "AI-assisted"], ["primarily_ai_generated", "Primarily AI-generated"], ["classification_pending", "Classification pending"]]} /></Field>
-      <Field label="Mood"><Input name="mood" maxLength={120} defaultValue={release?.mood ?? ""} /></Field>
-      <Field label="Duration in seconds"><Input name="durationSeconds" type="number" min={1} max={86400} defaultValue={release?.durationSeconds ?? ""} /></Field>
+      <MoodField name="mood" value={release?.mood ?? ""} />
+      <DurationField value={release?.durationSeconds} />
       <Field label="Content label"><Choice name="explicitStatus" value={release?.explicitStatus ?? "clean"} options={["clean", "explicit"]} /></Field>
       <Field label="Downloads"><Choice name="downloadEligibility" value={release?.downloadEligibility ?? "streaming_only"} options={[["streaming_only", "Streaming only"], ["free_download", "Free download"], ["paid_download", "Paid download"]]} /></Field>
       <Field label="Approval"><Choice name="approvalStatus" value={release?.approvalStatus ?? "draft"} options={["draft", "pending", "approved", "rejected", "disabled"]} /></Field>
@@ -209,7 +210,7 @@ function CreditFields({ artists, artistCredits, setArtistCredits, additionalCred
     <Button type="button" variant="outline" onClick={() => setArtistCredits((current) => [...current, { artistProfileId: artists[0]?.id ?? "", role: "featured" }])} disabled={!artists.length}>Add linked artist</Button>
     <div className="catalog-credit-list">
       {additionalCredits.map((credit, index) => <div className="catalog-credit-row" key={`additional-${index}`}>
-        <Input value={credit.role} onChange={(event) => setAdditionalCredits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, role: event.target.value } : item))} placeholder="Role, e.g. producer" aria-label="Credit role" />
+        <ContributorRoleField value={credit.role} onChange={(role) => setAdditionalCredits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, role } : item))} />
         <Input value={credit.contributorName} onChange={(event) => setAdditionalCredits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, contributorName: event.target.value } : item))} placeholder="Contributor name" aria-label="Contributor name" />
         <NativeSelect value={credit.artistProfileId ?? ""} onChange={(event) => setAdditionalCredits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, artistProfileId: event.target.value || null } : item))}><NativeSelectOption value="">No linked profile</NativeSelectOption>{artists.map((artist) => <NativeSelectOption key={artist.id} value={artist.id}>{artist.stageName}</NativeSelectOption>)}</NativeSelect>
         <Button type="button" variant="ghost" size="icon" aria-label="Remove credit" onClick={() => setAdditionalCredits((current) => current.filter((_, itemIndex) => itemIndex !== index))}>×</Button>
@@ -252,6 +253,11 @@ function readSocialLinks(value?: string) {
   } catch {
     return {};
   }
+}
+
+function presetFieldValue(form: FormData, name: string) {
+  const value = String(form.get(name) ?? "").trim();
+  return value === "__other__" ? String(form.get(`${name}Other`) ?? "").trim() : value;
 }
 
 export type { EditorState };

@@ -1,16 +1,16 @@
 "use client";
 
-import { FormEvent, type ReactNode, useMemo, useRef, useState } from "react";
+import { FormEvent, type ReactNode, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Archive, ArrowDown, ArrowUp, ChevronDown, LoaderCircle, Pencil, PlaySquare, Plus, Save, Search, Trash2 } from "lucide-react";
+import { Archive, ArrowDown, ArrowUp, LoaderCircle, Pencil, PlaySquare, Plus, Save, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { DateTimeInput } from "@/components/ui/date-time-input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { countryOptions, genrePresets } from "@/lib/submission-options";
+import { CountryRegionField, GenreField } from "@/components/forms/shared-metadata-fields";
 import { formatStageSlug, normalizeStageSlug } from "@/lib/stage-policy";
 
 type StageStatus = "draft" | "submitted" | "pending_review" | "approved" | "scheduled" | "published" | "featured" | "rejected" | "archived";
@@ -295,8 +295,8 @@ function StageEditor({ editor, artists, releases, busy, error, onClose, onSubmit
             <Field label="YouTube URL or ID"><Input name="youtubeUrl" maxLength={500} defaultValue={performance?.youtubeUrl ?? performance?.youtubeVideoId ?? ""} /></Field>
             <Field label="Thumbnail URL"><Input name="thumbnailUrl" type="url" defaultValue={performance?.thumbnailUrl ?? ""} /></Field>
             <Field label="Duration minutes"><Input name="durationMinutes" type="number" min={1} max={180} defaultValue={performance?.durationMinutes ?? ""} /></Field>
-            <Field label="Genre"><GenreField value={performance?.genre ?? ""} /></Field>
-            <Field label="Country/Region"><RegionField value={performance?.region ?? ""} /></Field>
+            <GenreField value={performance?.genre ?? ""} required />
+            <CountryRegionField value={performance?.region ?? ""} required />
             <Field label="Performance date"><DateTimeField name="performanceDate" value={performance?.performanceDate} /></Field>
             <Field label="Home placement"><Choice name="homePlacement" value={performance?.homePlacement ?? "none"} options={["none", "featured", "latest", "trending", "most_watched", "wadadli", "caribbean"]} /></Field>
             <Field label="Fee status"><Choice name="feeStatus" value={performance?.feeStatus ?? "not_required"} options={["not_required", "free_promotion", "discounted", "waived", "pending", "paid"]} /></Field>
@@ -330,43 +330,6 @@ function Choice({ name, value, options }: { name: string; value: string; options
 function SlugField({ value }: { value: string }) {
   const [slug, setSlug] = useState(() => normalizeStageSlug(value));
   return <Input name="slug" required maxLength={90} value={slug} onChange={(event) => setSlug(formatStageSlug(event.target.value))} onBlur={() => setSlug((current) => normalizeStageSlug(current))} placeholder="artist-stage-performance" />;
-}
-
-function GenreField({ value }: { value: string }) {
-  const isPreset = genrePresets.includes(value as typeof genrePresets[number]);
-  const [choice, setChoice] = useState(isPreset ? value : value ? "__other__" : "");
-  const [custom, setCustom] = useState(isPreset ? "" : value);
-  return <div className="stage-choice-stack">
-    <NativeSelect name="genre" value={choice} onChange={(event) => setChoice(event.target.value)} required>
-      <NativeSelectOption value="">Choose genre</NativeSelectOption>
-      {genrePresets.map((genre) => <NativeSelectOption key={genre} value={genre}>{genre}</NativeSelectOption>)}
-      <NativeSelectOption value="__other__">Other</NativeSelectOption>
-    </NativeSelect>
-    {choice === "__other__" && <Input name="genreOther" required maxLength={80} value={custom} onChange={(event) => setCustom(event.target.value)} placeholder="Enter genre" aria-label="Custom genre" />}
-  </div>;
-}
-
-function RegionField({ value }: { value: string }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [region, setRegion] = useState(value);
-  const [open, setOpen] = useState(false);
-  const matches = countryOptions().filter((country) => country.toLowerCase().includes(region.trim().toLowerCase())).slice(0, 80);
-  function choose(next: string) {
-    setRegion(next);
-    setOpen(false);
-  }
-  return <div className="stage-region-combobox">
-    <div className="stage-region-input-wrap">
-      <Input ref={inputRef} required value={region} onFocus={() => setOpen(true)} onChange={(event) => { setRegion(event.target.value); setOpen(true); }} onBlur={() => window.setTimeout(() => setOpen(false), 120)} maxLength={120} placeholder="Search a country or type a region" aria-label="Country or region" aria-autocomplete="list" aria-expanded={open} aria-controls="stage-region-options" />
-      <Button type="button" variant="ghost" size="icon" className="stage-region-toggle" aria-label="Show country and region options" onMouseDown={(event) => event.preventDefault()} onClick={() => { setOpen((current) => !current); inputRef.current?.focus(); }}><ChevronDown /></Button>
-    </div>
-    <input type="hidden" name="region" value={region.trim()} />
-    {open && <div id="stage-region-options" className="stage-region-options" role="listbox" aria-label="Country and region options">
-      {matches.map((country) => <button type="button" role="option" aria-selected={region === country} key={country} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(country)}>{country}</button>)}
-      {!matches.length && <p>No matching country. Use a manual region below.</p>}
-      <button type="button" className="stage-region-manual" onMouseDown={(event) => event.preventDefault()} onClick={() => { choose(""); inputRef.current?.focus(); }}>Other / Manual entry</button>
-    </div>}
-  </div>;
 }
 
 function DateTimeField({ name, value }: { name: string; value?: string | null }) {

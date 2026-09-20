@@ -12,7 +12,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea";
 import { PasswordInput } from "@/app/auth/password-input";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { commonCountries, countryOptions, genrePresets, moodPresets } from "@/lib/submission-options";
+import { ContributorRoleField, CountryRegionField as SharedCountryRegionField, DurationField as SharedDurationField, GenreField as SharedGenreField, MoodField as SharedMoodField } from "@/components/forms/shared-metadata-fields";
 
 type WorkspaceProfile = {
   id: string;
@@ -545,8 +545,8 @@ function ProfileDialog({ profile, studioMembers, busy, error, onClose, onSubmit 
       <DialogHeader><DialogTitle>Edit artist profile</DialogTitle><DialogDescription>Keep your public artist details current. Name, verification, visibility, and ownership remain administrator-controlled.</DialogDescription></DialogHeader>
       {profile && <form className="catalog-editor-form" onSubmit={onSubmit}>
         <div className="catalog-form-grid">
-          <Field label="Country or region"><Input name="countryRegion" required maxLength={120} defaultValue={profile.countryRegion} /></Field>
-          <Field label="Primary genre"><Input name="primaryGenre" required maxLength={80} defaultValue={profile.primaryGenre} /></Field>
+          <SharedCountryRegionField name="countryRegion" label="Country/Region" value={profile.countryRegion} required />
+          <SharedGenreField name="primaryGenre" value={profile.primaryGenre} required />
           <Field label="Associated studio (optional)"><NativeSelect name="studioMemberId" defaultValue={profile.studioMemberId ?? ""}><NativeSelectOption value="">No studio association</NativeSelectOption>{studioMembers.map((studio) => <NativeSelectOption key={studio.id} value={studio.id}>{studio.displayName}</NativeSelectOption>)}</NativeSelect></Field>
           <Field label="Website"><Input name="websiteUrl" type="url" defaultValue={links.Website ?? ""} /></Field>
           <Field label="Instagram"><Input name="instagramUrl" type="url" defaultValue={links.Instagram ?? ""} /></Field>
@@ -583,7 +583,7 @@ function ReleaseCreditsFields({ initialArtistCredits = [], initialAdditionalCred
     <p className="catalog-help-copy">Search for featured or co-artists to link their ChuneSide profiles. Add any number of named contributors, including producers, engineers, songwriters, and musicians.</p>
     <div className="catalog-artist-search"><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search artist profiles to add" aria-label="Search artist profiles to add" />{matches.length > 0 && <div className="catalog-artist-suggestions">{matches.map((artist) => <button type="button" key={artist.id} onClick={() => { if (!linked.some((item) => item.artistProfileId === artist.id)) setLinked((current) => [...current, { artistProfileId: artist.id, role: "featured" }]); setQuery(""); setMatches([]); }}>{artist.stageName}</button>)}</div>}</div>
     {linked.map((credit, index) => <div className="catalog-credit-row" key={`${credit.artistProfileId}-${index}`}><span>{matches.find((artist) => artist.id === credit.artistProfileId)?.stageName ?? "Linked artist profile"}</span><NativeSelect value={credit.role} onChange={(event) => setLinked((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, role: event.target.value as "featured" | "co_artist" } : item))}><NativeSelectOption value="featured">Featured artist</NativeSelectOption><NativeSelectOption value="co_artist">Co-artist</NativeSelectOption></NativeSelect><Button type="button" variant="ghost" size="icon" aria-label="Remove linked artist" onClick={() => setLinked((current) => current.filter((_, itemIndex) => itemIndex !== index))}>x</Button></div>)}
-    {additional.map((credit, index) => <div className="catalog-credit-row" key={`additional-${index}`}><Input value={credit.role} onChange={(event) => setAdditional((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, role: event.target.value } : item))} placeholder="Role" aria-label="Contributor role" /><Input value={credit.contributorName} onChange={(event) => setAdditional((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, contributorName: event.target.value } : item))} placeholder="Contributor name" aria-label="Contributor name" /><Button type="button" variant="ghost" size="icon" aria-label="Remove contributor" onClick={() => setAdditional((current) => current.filter((_, itemIndex) => itemIndex !== index))}>x</Button></div>)}
+    {additional.map((credit, index) => <div className="catalog-credit-row" key={`additional-${index}`}><ContributorRoleField value={credit.role} onChange={(role) => setAdditional((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, role } : item))} /><Input value={credit.contributorName} onChange={(event) => setAdditional((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, contributorName: event.target.value } : item))} placeholder="Contributor name" aria-label="Contributor name" /><Button type="button" variant="ghost" size="icon" aria-label="Remove contributor" onClick={() => setAdditional((current) => current.filter((_, itemIndex) => itemIndex !== index))}>x</Button></div>)}
     <Button type="button" variant="outline" onClick={() => setAdditional((current) => [...current, { role: "", contributorName: "", artistProfileId: null }])}>Add contributor credit</Button>
     <input type="hidden" name="artistCredits" value={JSON.stringify(linked)} />
     <input type="hidden" name="additionalCredits" value={JSON.stringify(additional)} />
@@ -632,13 +632,13 @@ function ReleaseDialog({ open, profiles, busy, error, onClose, onSubmit }: {
             <Field label="Release title"><Input name="title" required maxLength={160} /></Field>
             <Field label="Release slug"><Input name="slug" required maxLength={80} placeholder="release-title" /></Field>
             <Field label="Featuring artist"><Input name="featuringArtist" maxLength={160} /></Field>
-            <PresetField label="Genre" name="genre" presets={genrePresets} required />
-            <CountryField label="Country or region" name="region" required />
+            <SharedGenreField name="genre" required />
+            <SharedCountryRegionField name="region" required />
             <Field label="Discovery lane"><Select name="discoveryLane" options={["wadadli", "caribbean", "ai", "world"]} /></Field>
             <Field label="Creation disclosure"><Select name="creationType" options={[["artist_made", "Artist-made"], ["ai_assisted", "AI-assisted"]]} /></Field>
             <Field label="AI classification"><Select name="aiClassification" options={[["human_created", "Human-created"], ["ai_assisted", "AI-assisted"], ["primarily_ai_generated", "Primarily AI-generated"], ["classification_pending", "Classification pending"]]} /></Field>
-            <PresetField label="Mood" name="mood" presets={moodPresets} />
-            <DurationFields />
+            <SharedMoodField name="mood" />
+            <SharedDurationField />
             <Field label="AI use disclosure"><Textarea name="aiDisclosure" maxLength={1000} placeholder="Required for AI-assisted releases: describe the tools used and what they contributed." /></Field>
             <Field label="Submission notes"><Textarea name="submissionNotes" maxLength={1000} placeholder="Optional context for the ChuneSide review team." /></Field>
           </div>
@@ -661,12 +661,12 @@ function ReleaseCorrectionDialog({ release, busy, error, onClose, onSubmit }: { 
           <Field label="Release title"><Input name="title" required maxLength={160} defaultValue={release.title} /></Field>
           <Field label="Release slug"><Input name="slug" required maxLength={80} defaultValue={release.slug} /></Field>
           <Field label="Featuring artist"><Input name="featuringArtist" maxLength={160} defaultValue={release.featuringArtist ?? ""} /></Field>
-          <PresetField label="Genre" name="genre" presets={genrePresets} required defaultValue={release.genre} />
-          <CountryField label="Country or region" name="region" required defaultValue={release.region} />
+          <SharedGenreField name="genre" value={release.genre} required />
+          <SharedCountryRegionField name="region" value={release.region} required />
           <Field label="Discovery lane"><Select name="discoveryLane" options={["wadadli", "caribbean", "ai", "world"]} defaultValue={release.discoveryLane} /></Field>
           <Field label="AI classification"><Select name="aiClassification" options={[["human_created", "Human-created"], ["ai_assisted", "AI-assisted"], ["primarily_ai_generated", "Primarily AI-generated"], ["classification_pending", "Classification pending"]]} defaultValue={release.aiClassification} /></Field>
-          <PresetField label="Mood" name="mood" presets={moodPresets} defaultValue={release.mood ?? ""} />
-          <DurationFields defaultValue={release.durationSeconds} />
+          <SharedMoodField name="mood" value={release.mood ?? ""} />
+          <SharedDurationField value={release.durationSeconds} />
           <Field label="AI use disclosure"><Textarea name="aiDisclosure" maxLength={1000} defaultValue={release.aiDisclosure ?? ""} /></Field>
           <Field label="Submission notes"><Textarea name="submissionNotes" maxLength={1000} defaultValue={release.submissionNotes ?? ""} /></Field>
         </div>
@@ -692,8 +692,8 @@ function StageSubmissionDialog({ open, profiles, performance, busy, error, onClo
           <Field label="YouTube URL or ID"><Input name="youtubeUrl" required maxLength={500} defaultValue={performance?.youtubeUrl ?? ""} /></Field>
           <Field label="Thumbnail URL"><Input name="thumbnailUrl" type="url" defaultValue={performance?.thumbnailUrl ?? ""} /></Field>
           <Field label="Duration minutes"><Input name="durationMinutes" type="number" min={1} max={180} defaultValue={performance?.durationMinutes ?? ""} /></Field>
-          <Field label="Genre"><Input name="genre" required maxLength={80} defaultValue={performance?.genre ?? ""} /></Field>
-          <Field label="Region"><Input name="region" required maxLength={120} defaultValue={performance?.region ?? ""} /></Field>
+          <SharedGenreField value={performance?.genre ?? ""} required />
+          <SharedCountryRegionField value={performance?.region ?? ""} label="Country/Region" required />
           <Field label="Performance date"><DateTimeInput name="performanceDate" type="datetime-local" defaultValue={dateTimeLocal(performance?.performanceDate)} /></Field>
           <Field label="Songs performed" wide><Textarea name="songsPerformed" maxLength={1000} defaultValue={songsText(performance?.songsPerformedJson)} placeholder={"Song one\nSong two\nSong three"} /></Field>
           <Field label="Description" wide><Textarea name="description" maxLength={2000} defaultValue={performance?.description ?? ""} /></Field>
@@ -709,42 +709,6 @@ function StageSubmissionDialog({ open, profiles, performance, busy, error, onClo
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="catalog-field"><span>{label}</span>{children}</label>;
-}
-
-function PresetField({ label, name, presets, required = false, defaultValue = "" }: { label: string; name: string; presets: readonly string[]; required?: boolean; defaultValue?: string }) {
-  const isKnown = presets.includes(defaultValue);
-  const [choice, setChoice] = useState(isKnown ? defaultValue : defaultValue ? "Other" : "");
-  const [other, setOther] = useState(isKnown ? "" : defaultValue);
-  return <Field label={label}>
-    <Input name={name} list={`${name}-presets`} required={required} maxLength={120} value={choice} placeholder="Search or choose a preset" onChange={(event) => setChoice(event.target.value)} />
-    <datalist id={`${name}-presets`}>{presets.map((preset) => <option value={preset} key={preset} />)}<option value="Other" /></datalist>
-    {choice === "Other" && <Input name={`${name}Other`} required={required} maxLength={120} value={other} placeholder={`Enter ${label.toLowerCase()}`} onChange={(event) => setOther(event.target.value)} />}
-  </Field>;
-}
-
-function CountryField({ label, name, required = false, defaultValue = "" }: { label: string; name: string; required?: boolean; defaultValue?: string }) {
-  const [options] = useState(() => countryOptions());
-  return <Field label={label}>
-    <Input name={name} list={`${name}-options`} required={required} maxLength={120} defaultValue={defaultValue} placeholder="Search countries" />
-    <datalist id={`${name}-options`}>{[...commonCountries, ...options].filter((value, index, all) => all.indexOf(value) === index).map((country) => <option value={country} key={country} />)}</datalist>
-  </Field>;
-}
-
-function DurationFields({ defaultValue = null }: { defaultValue?: number | null }) {
-  const initial = Math.max(0, defaultValue ?? 0);
-  const [minutes, setMinutes] = useState(String(Math.floor(initial / 60)));
-  const [seconds, setSeconds] = useState(String(initial % 60).padStart(2, "0"));
-  const total = (Number(minutes) || 0) * 60 + (Number(seconds) || 0);
-  return <Field label="Duration">
-    <div className="duration-inputs">
-      <Input name="durationMinutes" type="number" min={0} max={1440} value={minutes} aria-label="Duration minutes" onChange={(event) => setMinutes(event.target.value)} />
-      <span>:</span>
-      <Input name="durationSecondsPart" type="number" min={0} max={59} value={seconds} aria-label="Duration seconds" onChange={(event) => setSeconds(event.target.value)} />
-      <output aria-label="Formatted duration">{formatDuration(total)}</output>
-    </div>
-    <input type="hidden" name="durationSeconds" value={total || ""} />
-    <small className="field-hint">Audio duration is detected automatically when reliable.</small>
-  </Field>;
 }
 
 function Select({ name, options, defaultValue }: { name: string; options: Array<string | [string, string]>; defaultValue?: string }) {
@@ -770,10 +734,6 @@ function durationFromForm(form: FormData) {
 function presetValue(form: FormData, name: string) {
   const choice = String(form.get(name) ?? "").trim();
   return choice === "Other" ? String(form.get(`${name}Other`) ?? "").trim() : choice;
-}
-
-function formatDuration(totalSeconds: number) {
-  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
 }
 
 async function uploadArtistMedia(file: File, releaseId: string, kind: "audio" | "cover" | "video", durationSeconds: number | null, options: { audioVariant?: "master" | "stream"; sourceMediaId?: string; mp3Acknowledged?: boolean }) {
@@ -895,7 +855,7 @@ function stageSubmissionPayload(form: FormData) {
     thumbnailUrl: form.get("thumbnailUrl"),
     durationMinutes: form.get("durationMinutes") ? Number(form.get("durationMinutes")) : null,
     songsPerformed: form.get("songsPerformed"),
-    genre: form.get("genre"),
+    genre: presetValue(form, "genre"),
     region: form.get("region"),
     performanceDate: form.get("performanceDate"),
     originalSubmissionInfo: form.get("originalSubmissionInfo"),

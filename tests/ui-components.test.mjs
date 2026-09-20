@@ -228,14 +228,19 @@ test("keeps radio-ready confirmation and platform links in the artist workflow",
 
 test("keeps release metadata inputs searchable and duration compatible", async () => {
   const dashboard = await readFile(path.join(root, "app", "artist", "dashboard", "artist-dashboard-client.tsx"), "utf8");
+  const sharedFields = await readFile(path.join(root, "components", "forms", "shared-metadata-fields.tsx"), "utf8");
   const options = await readFile(path.join(root, "lib", "submission-options.ts"), "utf8");
 
-  assert.match(dashboard, /list=\{`\$\{name\}-presets`\}/);
-  assert.match(dashboard, /name=\{`\$\{name\}Other`\}/);
-  assert.match(dashboard, /name="durationMinutes"/);
-  assert.match(dashboard, /name="durationSecondsPart"/);
+  assert.match(sharedFields, /export function GenreField/);
+  assert.match(sharedFields, /export function CountryRegionField/);
+  assert.match(sharedFields, /export function MoodField/);
+  assert.match(sharedFields, /export function DurationField/);
+  assert.match(sharedFields, /Other/);
+  assert.match(sharedFields, /countryOptions\(\)/);
+  assert.match(dashboard, /SharedDurationField/);
+  assert.match(sharedFields, /name="durationMinutes"/);
+  assert.match(sharedFields, /name="durationSecondsPart"/);
   assert.match(dashboard, /x-chuneside-duration-seconds/);
-  assert.match(dashboard, /value="Other"/);
   assert.match(dashboard, /method: "DELETE"/);
   assert.match(dashboard, /workspace-delete-button/);
   assert.match(dashboard, /Confirm release deletion/);
@@ -540,10 +545,13 @@ test("stage editor exposes normalized slugs and structured scheduling controls",
   assert.equal(formatStageSlug("On The Road "), "on-the-road-");
   assert.equal(normalizeStageSlug("On The Road "), "on-the-road");
   const source = await readFile(path.join(root, "app", "admin", "stage", "stage-client.tsx"), "utf8");
-  assert.match(source, /genrePresets/);
-  assert.match(source, /countryOptions\(\)/);
-  assert.match(source, /Country\/Region/);
-  assert.match(source, /stage-region-options/);
+  const sharedFields = await readFile(path.join(root, "components", "forms", "shared-metadata-fields.tsx"), "utf8");
+  assert.match(source, /GenreField/);
+  assert.match(source, /CountryRegionField/);
+  assert.match(sharedFields, /genrePresets/);
+  assert.match(sharedFields, /countryOptions\(\)/);
+  assert.match(sharedFields, /Country\/Region/);
+  assert.match(sharedFields, /stage-region-options/);
   assert.match(source, /DateTimeInput/);
   assert.match(source, /index % 12\) \* 5/);
   assert.match(source, /formatStageSlug/);
