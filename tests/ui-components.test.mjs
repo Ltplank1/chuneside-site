@@ -358,6 +358,29 @@ test("keeps the ChuneSide Visualizer lightweight, opt-in, and isolated from play
   assert.doesNotMatch(home, /sendListeningEvent\("visualizer/);
 });
 
+test("extends the existing News Bar with scheduled motion, safe styling, preview, and media controls", async () => {
+  const [schema, migration, publicRoute, adminRoute, adminClient, home, css] = await Promise.all([
+    readFile(path.join(root, "db", "schema.ts"), "utf8"),
+    readFile(path.join(root, "drizzle", "0014_news_reel_motion.sql"), "utf8"),
+    readFile(path.join(root, "app", "api", "announcements", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "api", "admin", "announcements", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "admin", "announcements", "announcements-client.tsx"), "utf8"),
+    readFile(path.join(root, "app", "page.tsx"), "utf8"),
+    readFile(path.join(root, "app", "news-reel.css"), "utf8"),
+  ]);
+
+  assert.match(schema, /animationStyle/);
+  assert.match(migration, /animation_style/);
+  assert.match(publicRoute, /backgroundImageUrl/);
+  assert.match(adminRoute, /animationDurationSeconds/);
+  assert.match(adminRoute, /restoreDefaults/);
+  assert.match(adminClient, /Live preview/);
+  assert.match(adminClient, /Custom background graphic/);
+  assert.match(home, /news-animation-\$\{lead\.animationStyle/);
+  assert.match(css, /news-animation-typewriter/);
+  assert.match(css, /news-position-bottom/);
+});
+
 test("classifies AI releases for configurable upload limits", async () => {
   const {
     classificationQualifiesForRestriction,

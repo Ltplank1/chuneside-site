@@ -1,0 +1,13 @@
+ALTER TABLE `community_announcements` ADD `animation_style` text DEFAULT 'scroll' NOT NULL;
+ALTER TABLE `community_announcements` ADD `animation_behavior` text DEFAULT 'loop' NOT NULL;
+ALTER TABLE `community_announcements` ADD `animation_duration_seconds` integer DEFAULT 28 NOT NULL;
+ALTER TABLE `community_announcements` ADD `animation_delay_seconds` integer DEFAULT 0 NOT NULL;
+ALTER TABLE `community_announcements` ADD `position` text DEFAULT 'below_header' NOT NULL;
+ALTER TABLE `community_announcements` ADD `text_color` text DEFAULT '#07080a' NOT NULL;
+ALTER TABLE `community_announcements` ADD `background_color` text DEFAULT '#dfff00' NOT NULL;
+ALTER TABLE `community_announcements` ADD `background_transparent` integer DEFAULT false NOT NULL;
+ALTER TABLE `community_announcements` ADD `bar_height` integer DEFAULT 42 NOT NULL;
+ALTER TABLE `community_announcements` ADD `padding` integer DEFAULT 16 NOT NULL;
+ALTER TABLE `community_announcements` ADD `font_family` text DEFAULT 'sans' NOT NULL;
+ALTER TABLE `community_announcements` ADD `font_weight` text DEFAULT 'bold' NOT NULL;
+ALTER TABLE `community_announcements` ADD `background_image_url` text;

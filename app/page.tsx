@@ -41,8 +41,21 @@ type PublicAnnouncement = {
   linkUrl: string | null;
   category: "community" | "release" | "competition" | "stage" | "maintenance" | "artist" | "general";
   scrollSpeedSeconds: number;
+  animationStyle: "scroll" | "slide_left" | "slide_right" | "drop_in" | "rise" | "fade" | "zoom" | "bounce" | "pulse" | "pop" | "typewriter" | "static";
+  animationBehavior: "once" | "loop" | "delay";
+  animationDurationSeconds: number;
+  animationDelaySeconds: number;
+  position: "top" | "below_header" | "above_content" | "bottom";
   textSize: "small" | "medium" | "large";
   fontStyle: "standard" | "bold" | "wide";
+  textColor: string;
+  backgroundColor: string;
+  backgroundTransparent: boolean;
+  barHeight: number;
+  padding: number;
+  fontFamily: "sans" | "display" | "mono";
+  fontWeight: "normal" | "semibold" | "bold";
+  backgroundImageUrl: string | null;
 };
 
 type PublicStagePerformance = {
@@ -456,11 +469,16 @@ export default function Home() {
 
 function CommunityNewsBar({ announcements }: { announcements: PublicAnnouncement[] }) {
   if (!announcements.length) return null;
-  const speed = Math.max(10, Math.min(120, Math.round(announcements[0]?.scrollSpeedSeconds ?? 28)));
-  const items = announcements.length > 1 ? announcements : [...announcements, ...announcements];
-  const className = `community-news-bar text-${announcements[0]?.textSize ?? "medium"} font-${announcements[0]?.fontStyle ?? "bold"}`;
+  const lead = announcements[0];
+  const duration = Math.max(1, Math.min(120, Math.round(lead.animationDurationSeconds ?? lead.scrollSpeedSeconds ?? 28)));
+  const animated = lead.animationStyle !== "static";
+  const items = animated && lead.animationBehavior !== "once" && announcements.length === 1 ? [...announcements, ...announcements] : announcements;
+  const className = `community-news-bar news-position-${lead.position ?? "below_header"} news-animation-${lead.animationStyle ?? "scroll"} news-behavior-${lead.animationBehavior ?? "loop"} text-${lead.textSize ?? "medium"} font-${lead.fontStyle ?? "bold"} family-${lead.fontFamily ?? "sans"}`;
+  const style = {
+    "--news-speed": `${duration}s`, "--news-delay": `${Math.max(0, lead.animationDelaySeconds ?? 0)}s`, "--news-text-color": lead.textColor ?? "#07080a", "--news-background": lead.backgroundTransparent ? "transparent" : lead.backgroundColor ?? "#dfff00", "--news-height": `${Math.max(28, lead.barHeight ?? 42)}px`, "--news-padding": `${Math.max(0, lead.padding ?? 16)}px`, "--news-background-image": lead.backgroundImageUrl ? `url("${lead.backgroundImageUrl}")` : "none",
+  } as CSSProperties;
   return (
-    <section className={className} aria-label="ChuneSide community announcements" style={{ "--news-speed": `${speed}s` } as CSSProperties}>
+    <section className={className} aria-label="ChuneSide community announcements" style={style}>
       <div className="news-track">
         {items.map((item, index) => {
           const content = <><Megaphone /><span>{titleCase(item.category)}</span><strong>{item.message}</strong></>;

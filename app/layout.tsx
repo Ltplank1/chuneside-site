@@ -3,6 +3,7 @@ import "./globals.css";
 import "./analytics.css";
 import "./site-content.css";
 import "./visualizer.css";
+import "./news-reel.css";
 import { ServiceWorkerRegistration } from "./service-worker-registration";
 import { InstallPrompt } from "./install-prompt";
 
