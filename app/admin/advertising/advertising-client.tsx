@@ -98,7 +98,7 @@ function AdminAdPreview({ campaign }: { campaign: Campaign | null }) {
 }
 
 async function uploadCampaignMedia(campaignId: string, files: readonly [string, FormDataEntryValue | null][], onFinished: (error: string | null) => void) {
-  const chunkSize = 1024 * 1024;
+  const chunkSize = 512 * 1024;
   for (const [kind, file] of files) if (file instanceof File && file.size) {
     const totalChunks = Math.ceil(file.size / chunkSize);
     let uploadId: string | null = null;
