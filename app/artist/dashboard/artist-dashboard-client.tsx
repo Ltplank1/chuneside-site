@@ -781,10 +781,15 @@ async function encodeWavToMp3(file: File) {
     const decoded = await audioContext.decodeAudioData(await file.arrayBuffer());
     // lamejs 1.2.1's browser bundle leaves MPEGMode as an undeclared global in
     // Encoder/PsyModel. Provide that dependency only for the conversion call.
-    const modeModule = await import("lamejs/src/js/MPEGMode.js");
-    const globalScope = globalThis as typeof globalThis & { MPEGMode?: unknown };
+    const [modeModule, lameModule] = await Promise.all([
+      import("lamejs/src/js/MPEGMode.js"),
+      import("lamejs/src/js/Lame.js"),
+    ]);
+    const globalScope = globalThis as typeof globalThis & { MPEGMode?: unknown; Lame?: unknown };
     const previousMode = globalScope.MPEGMode;
+    const previousLame = globalScope.Lame;
     globalScope.MPEGMode = modeModule.default;
+    globalScope.Lame = lameModule.default;
     const lame = await import("lamejs");
     try {
       const channels = Math.min(decoded.numberOfChannels, 2);
@@ -802,6 +807,8 @@ async function encodeWavToMp3(file: File) {
     } finally {
       if (previousMode === undefined) delete globalScope.MPEGMode;
       else globalScope.MPEGMode = previousMode;
+      if (previousLame === undefined) delete globalScope.Lame;
+      else globalScope.Lame = previousLame;
     }
   } finally {
     await audioContext.close();
