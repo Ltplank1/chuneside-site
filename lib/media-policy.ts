@@ -1,7 +1,7 @@
 export const mediaRules = {
   audio: {
     maxBytes: 40 * 1024 * 1024,
-    contentTypes: ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/ogg"],
+    contentTypes: ["audio/mpeg", "audio/wav", "audio/x-wav"],
   },
   cover: {
     maxBytes: 8 * 1024 * 1024,
@@ -31,9 +31,7 @@ export function validateMediaFile(kind: MediaKind, file: { size: number; type: s
     (file.type === "image/webp" && ascii.slice(0, 4) === "RIFF" && ascii.slice(8, 12) === "WEBP");
   const audioSignature =
     (file.type === "audio/mpeg" && (ascii.slice(0, 3) === "ID3" || (header[0] === 0xff && (header[1] & 0xe0) === 0xe0))) ||
-    (["audio/wav", "audio/x-wav"].includes(file.type) && isRealWav(header)) ||
-    (file.type === "audio/mp4" && ascii.slice(4, 8) === "ftyp") ||
-    (file.type === "audio/ogg" && ascii.slice(0, 4) === "OggS");
+    (["audio/wav", "audio/x-wav"].includes(file.type) && isRealWav(header, file.size));
   const videoSignature =
     (["video/mp4", "video/quicktime"].includes(file.type) && ascii.slice(4, 8) === "ftyp") ||
     (file.type === "video/webm" && header[0] === 0x1a && header[1] === 0x45 && header[2] === 0xdf && header[3] === 0xa3);
@@ -43,9 +41,11 @@ export function validateMediaFile(kind: MediaKind, file: { size: number; type: s
   return imageSignature ? null : `The ${kind === "profile" ? "profile photo" : "cover"} file contents do not match its type.`;
 }
 
-function isRealWav(header: Uint8Array) {
+function isRealWav(header: Uint8Array, fileSize: number) {
   const ascii = String.fromCharCode(...header);
   if (ascii.slice(0, 4) !== "RIFF" || ascii.slice(8, 12) !== "WAVE") return false;
+  const declaredSize = header[4] | (header[5] << 8) | (header[6] << 16) | (header[7] << 24);
+  if (declaredSize < 36 || declaredSize + 8 > fileSize) return false;
   let hasFormat = false;
   let hasData = false;
   for (let offset = 12; offset + 8 <= header.length;) {

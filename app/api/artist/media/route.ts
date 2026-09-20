@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { and, eq, max, ne } from "drizzle-orm";
+import { and, eq, inArray, max, ne } from "drizzle-orm";
 import { getDb } from "@/db";
 import { adminAuditLogs, artistProfiles, releaseMedia, releases } from "@/db/schema";
 import { getArtistWorkspaceAccess } from "@/lib/artist-access";
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   }
   const prepared = await prepareMediaStream(request.body, mediaKind);
   if (prepared.error) return NextResponse.json({ error: prepared.error }, { status: 400 });
-  const validationError = validateMediaFile(mediaKind, { size: prepared.size, type: contentType }, prepared.header);
+  const validationError = validateMediaFile(mediaKind, { size: contentLength, type: contentType }, prepared.header);
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
   if (mediaKind === "audio" && contentType === "audio/mpeg" && !sourceMediaId && !mp3Acknowledged) {
     return NextResponse.json({ error: "Acknowledge that MP3 quality cannot be restored before uploading an MP3." }, { status: 400 });
@@ -70,8 +70,8 @@ export async function POST(request: Request) {
   if (mediaKind === "audio" && audioVariant === "stream" && contentType !== "audio/mpeg") {
     return NextResponse.json({ error: "A streaming MP3 must be generated from an uploaded WAV master." }, { status: 400 });
   }
-  if (mediaKind === "audio" && audioVariant === "master" && contentType !== "audio/wav" && contentType !== "audio/x-wav" && contentType !== "audio/mpeg") {
-    return NextResponse.json({ error: "Audio masters must be WAV or an acknowledged 320 kbps MP3." }, { status: 400 });
+  if (mediaKind === "audio" && audioVariant === "master" && contentType !== "audio/wav" && contentType !== "audio/x-wav") {
+    return NextResponse.json({ error: "Audio masters must be WAV. Use an acknowledged 320 kbps MP3 only when no WAV master is available." }, { status: 400 });
   }
 
   const [ownedRelease] = await db.select({ id: releases.id, status: releases.approvalStatus }).from(releases)
@@ -79,18 +79,18 @@ export async function POST(request: Request) {
     .where(and(eq(releases.id, releaseId), eq(artistProfiles.ownerMemberId, access.user.id))).limit(1);
   if (!ownedRelease) return NextResponse.json({ error: "That release is not linked to your artist account." }, { status: 403 });
   if (mediaKind === "audio" && audioVariant === "stream" && sourceMediaId) {
-    const [source] = await db.select({ id: releaseMedia.id }).from(releaseMedia).where(and(
+    const [source] = await db.select({ id: releaseMedia.id, contentType: releaseMedia.contentType }).from(releaseMedia).where(and(
       eq(releaseMedia.id, sourceMediaId),
       eq(releaseMedia.releaseId, releaseId),
       eq(releaseMedia.kind, "audio"),
       eq(releaseMedia.variant, "master"),
       eq(releaseMedia.privateOnly, true),
-      ne(releaseMedia.status, "deleted"),
+      inArray(releaseMedia.status, ["pending", "ready"]),
     )).limit(1);
-    if (!source) return NextResponse.json({ error: "The streaming MP3 must be linked to your WAV master." }, { status: 400 });
+    if (!source || !["audio/wav", "audio/x-wav"].includes(source.contentType)) return NextResponse.json({ error: "The streaming MP3 must be linked to your WAV master." }, { status: 400 });
   }
-  if (ownedRelease.status === "approved" || ownedRelease.status === "disabled") {
-    return NextResponse.json({ error: "Published or disabled release media cannot be replaced here." }, { status: 409 });
+  if (ownedRelease.status === "disabled") {
+    return NextResponse.json({ error: "Disabled release media cannot be replaced here." }, { status: 409 });
   }
 
   const id = randomUUID();
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       eq(releaseMedia.releaseId, releaseId),
       eq(releaseMedia.kind, mediaKind),
       ...(mediaKind === "audio" ? [eq(releaseMedia.variant, audioVariant)] : []),
-      ne(releaseMedia.status, "deleted"),
+      inArray(releaseMedia.status, ["pending", "ready"]),
     ));
     const [latestVersion] = await db.select({ value: max(releaseMedia.version) }).from(releaseMedia).where(and(
       eq(releaseMedia.releaseId, releaseId),
@@ -142,11 +142,12 @@ export async function POST(request: Request) {
       createdAt: now,
       updatedAt: now,
     });
-    await db.update(releaseMedia).set({ status: "deleted", updatedAt: now }).where(and(
+    await db.update(releaseMedia).set({ status: "superseded", updatedAt: now }).where(and(
       eq(releaseMedia.releaseId, releaseId),
       eq(releaseMedia.kind, mediaKind),
       ...(mediaKind === "audio" ? [eq(releaseMedia.variant, audioVariant)] : []),
       ne(releaseMedia.id, id),
+      inArray(releaseMedia.status, ["pending", "ready"]),
     ));
     await Promise.all(mediaKind === "audio" ? [] : previous.map((item) => bucket.delete(item.objectKey)));
     await db.update(releases).set({
@@ -162,7 +163,7 @@ export async function POST(request: Request) {
     await db.insert(adminAuditLogs).values({
       id: randomUUID(), actorId: access.user.id, actorEmail: access.user.email,
       action: "artist.media_upload", entityType: "release_media", entityId: id,
-      details: JSON.stringify({ releaseId, kind: mediaKind, contentType, sizeBytes: prepared.size, radioReadyConfirmed: true }), createdAt: now,
+      details: JSON.stringify({ trackId: releaseId, kind: mediaKind, variant: mediaKind === "audio" ? audioVariant : "master", version, sourceMediaId: sourceMediaId ?? null, replacesMediaIds: previous.map((item) => item.id), contentType, sizeBytes: prepared.size, radioReadyConfirmed: true }), createdAt: now,
     });
     const [media] = await db.select().from(releaseMedia).where(eq(releaseMedia.id, id)).limit(1);
     return NextResponse.json({ media });

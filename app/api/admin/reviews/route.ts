@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { and, eq, max, ne } from "drizzle-orm";
+import { and, eq, inArray, max } from "drizzle-orm";
 import { z } from "zod";
 import { requireAdminUser } from "@/app/admin-auth";
 import { getDb } from "@/db";
@@ -35,9 +35,9 @@ export async function POST(request: Request) {
   if (parsed.data.decision === "takedown") {
     if (release.approvalStatus !== "approved") return NextResponse.json({ error: "Only approved releases can be taken down." }, { status: 409 });
     const now = new Date();
-    const media = await db.select({ id: releaseMedia.id }).from(releaseMedia).where(and(eq(releaseMedia.releaseId, release.id), ne(releaseMedia.status, "deleted")));
+    const media = await db.select({ id: releaseMedia.id }).from(releaseMedia).where(and(eq(releaseMedia.releaseId, release.id), inArray(releaseMedia.status, ["pending", "ready"])));
     await db.update(releases).set({ approvalStatus: "disabled", publicationStatus: "archived", audioUrl: null, coverImageUrl: null, musicVideoUrl: null, reviewNote: parsed.data.reviewNote, reviewedAt: now, reviewedBy: admin.email, updatedAt: now }).where(eq(releases.id, release.id));
-    await db.update(releaseMedia).set({ status: "deleted", updatedAt: now }).where(and(eq(releaseMedia.releaseId, release.id), ne(releaseMedia.status, "deleted")));
+    await db.update(releaseMedia).set({ status: "deleted", updatedAt: now }).where(and(eq(releaseMedia.releaseId, release.id), inArray(releaseMedia.status, ["pending", "ready"])));
     await db.insert(adminAuditLogs).values({ id: randomUUID(), actorId: admin.id, actorEmail: admin.email, action: "catalog.release_takedown", entityType: "release", entityId: release.id, details: JSON.stringify({ title: release.title, reviewNote: parsed.data.reviewNote, deletedMediaIds: media.map((item) => item.id) }), createdAt: now });
     const [updatedRelease] = await db.select().from(releases).where(eq(releases.id, release.id)).limit(1);
     return NextResponse.json({ release: updatedRelease });
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     if (await isFeatureAvailable(db, "artist_media_uploads", "admin")) {
       const media = await db.select({ id: releaseMedia.id, kind: releaseMedia.kind, variant: releaseMedia.variant }).from(releaseMedia).where(and(
         eq(releaseMedia.releaseId, release.id),
-        ne(releaseMedia.status, "deleted"),
+        inArray(releaseMedia.status, ["pending", "ready"]),
       ));
       if (!media.some((item) => item.kind === "audio" && (item.variant === "stream" || item.variant === "master"))) blockers.push("An audio master is required.");
       if (media.some((item) => item.kind === "audio" && item.variant === "master") && !media.some((item) => item.kind === "audio" && item.variant === "stream")) blockers.push("A streaming MP3 must be generated from the WAV master before approval.");
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
   }
 
   const media = parsed.data.decision === "approve"
-    ? await db.select({ id: releaseMedia.id, kind: releaseMedia.kind, variant: releaseMedia.variant }).from(releaseMedia).where(and(eq(releaseMedia.releaseId, release.id), ne(releaseMedia.status, "deleted")))
+    ? await db.select({ id: releaseMedia.id, kind: releaseMedia.kind, variant: releaseMedia.variant }).from(releaseMedia).where(and(eq(releaseMedia.releaseId, release.id), inArray(releaseMedia.status, ["pending", "ready"])))
     : [];
   const audio = media.find((item) => item.kind === "audio" && item.variant === "stream") ?? media.find((item) => item.kind === "audio");
   const cover = media.find((item) => item.kind === "cover");
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
     updatedAt: now,
   }).where(eq(releases.id, release.id));
   if (parsed.data.decision === "approve") {
-    await db.update(releaseMedia).set({ status: "ready", updatedAt: now }).where(and(eq(releaseMedia.releaseId, release.id), ne(releaseMedia.status, "deleted")));
+    await db.update(releaseMedia).set({ status: "ready", updatedAt: now }).where(and(eq(releaseMedia.releaseId, release.id), eq(releaseMedia.status, "pending")));
   }
 
   await db.insert(adminAuditLogs).values({

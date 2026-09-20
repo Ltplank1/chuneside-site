@@ -209,7 +209,7 @@ export const releaseMedia = sqliteTable("release_media", {
   originalName: text("original_name").notNull(),
   contentType: text("content_type").notNull(),
   sizeBytes: integer("size_bytes").notNull(),
-  status: text("status", { enum: ["pending", "ready", "rejected", "deleted"] }).notNull().default("pending"),
+  status: text("status", { enum: ["pending", "ready", "rejected", "superseded", "deleted"] }).notNull().default("pending"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 }, (table) => [

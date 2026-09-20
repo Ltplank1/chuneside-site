@@ -77,6 +77,23 @@ type AiPolicySummary = {
   exceptionId: string | null;
 };
 
+type BrowserMp3Encoder = {
+  encodeBuffer(left: Int16Array, right?: Int16Array): Int8Array;
+  flush(): Int8Array;
+};
+
+type BrowserLame = {
+  Mp3Encoder: new (channels: number, sampleRate: number, bitrateKbps: number) => BrowserMp3Encoder;
+};
+
+declare global {
+  interface Window {
+    lamejs?: BrowserLame;
+  }
+}
+
+let browserLameLoader: Promise<BrowserLame> | undefined;
+
 type WorkspaceStagePerformance = {
   id: string;
   artistProfileId: string;
@@ -779,57 +796,41 @@ async function encodeWavToMp3(file: File) {
   const audioContext = new AudioContext();
   try {
     const decoded = await audioContext.decodeAudioData(await file.arrayBuffer());
-    // lamejs 1.2.1's modular browser entry leaves several internal classes as
-    // undeclared globals. Provide those dependencies only during conversion.
-    const compatibilityModules = await Promise.all([
-      ["MPEGMode", import("lamejs/src/js/MPEGMode.js")],
-      ["Lame", import("lamejs/src/js/Lame.js")],
-      ["BitStream", import("lamejs/src/js/BitStream.js")],
-      ["Encoder", import("lamejs/src/js/Encoder.js")],
-      ["Quantize", import("lamejs/src/js/Quantize.js")],
-      ["Reservoir", import("lamejs/src/js/Reservoir.js")],
-      ["Takehiro", import("lamejs/src/js/Takehiro.js")],
-      ["VBRTag", import("lamejs/src/js/VBRTag.js")],
-      ["Version", import("lamejs/src/js/Version.js")],
-      ["GainAnalysis", import("lamejs/src/js/GainAnalysis.js")],
-      ["Presets", import("lamejs/src/js/Presets.js")],
-      ["QuantizePVT", import("lamejs/src/js/QuantizePVT.js")],
-      ["NewMDCT", import("lamejs/src/js/NewMDCT.js")],
-      ["CBRNewIterationLoop", import("lamejs/src/js/CBRNewIterationLoop.js")],
-      ["LameInternalFlags", import("lamejs/src/js/LameInternalFlags.js")],
-      ["LameGlobalFlags", import("lamejs/src/js/LameGlobalFlags.js")],
-      ["PsyModel", import("lamejs/src/js/PsyModel.js")],
-    ] as const);
-    const globalScope = globalThis as typeof globalThis & Record<string, unknown>;
-    const previousGlobals = new Map<string, unknown>();
-    for (const [name, module] of compatibilityModules) {
-      previousGlobals.set(name, globalScope[name]);
-      const moduleExports = module as unknown as { default?: unknown; "module.exports"?: unknown };
-      globalScope[name] = moduleExports.default ?? moduleExports["module.exports"];
+    const lame = await loadBrowserLame();
+    const channels = Math.min(decoded.numberOfChannels, 2);
+    const encoder = new lame.Mp3Encoder(channels, decoded.sampleRate, 320);
+    const left = floatToInt16(decoded.getChannelData(0));
+    const right = channels === 2 ? floatToInt16(decoded.getChannelData(1)) : undefined;
+    const parts: BlobPart[] = [];
+    for (let offset = 0; offset < left.length; offset += 1152) {
+      const encoded = encoder.encodeBuffer(left.subarray(offset, offset + 1152), right);
+      if (encoded.length) parts.push(Uint8Array.from(encoded));
     }
-    const lame = await import("lamejs");
-    try {
-      const channels = Math.min(decoded.numberOfChannels, 2);
-      const encoder = new lame.Mp3Encoder(channels, decoded.sampleRate, 320);
-      const left = floatToInt16(decoded.getChannelData(0));
-      const right = channels === 2 ? floatToInt16(decoded.getChannelData(1)) : undefined;
-      const parts: BlobPart[] = [];
-      for (let offset = 0; offset < left.length; offset += 1152) {
-        const encoded = encoder.encodeBuffer(left.subarray(offset, offset + 1152), right?.subarray(offset, offset + 1152));
-        if (encoded.length) parts.push(Uint8Array.from(encoded));
-      }
-      const tail = encoder.flush();
-      if (tail.length) parts.push(Uint8Array.from(tail));
-      return new File(parts, file.name.replace(/\.wav$/i, ".mp3"), { type: "audio/mpeg" });
-    } finally {
-      for (const [name, previous] of previousGlobals) {
-        if (previous === undefined) delete globalScope[name];
-        else globalScope[name] = previous;
-      }
-    }
+    const tail = encoder.flush();
+    if (tail.length) parts.push(Uint8Array.from(tail));
+    return new File(parts, file.name.replace(/\.wav$/i, ".mp3"), { type: "audio/mpeg" });
   } finally {
     await audioContext.close();
   }
+}
+
+function loadBrowserLame() {
+  if (window.lamejs?.Mp3Encoder) return Promise.resolve(window.lamejs);
+  if (browserLameLoader) return browserLameLoader;
+  browserLameLoader = new Promise<BrowserLame>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "/vendor/lame.min.js";
+    script.async = true;
+    script.onload = () => window.lamejs?.Mp3Encoder
+      ? resolve(window.lamejs)
+      : reject(new Error("The audio converter could not be initialized."));
+    script.onerror = () => reject(new Error("The audio converter could not be loaded. Please try again."));
+    document.head.appendChild(script);
+  }).catch((error) => {
+    browserLameLoader = undefined;
+    throw error;
+  });
+  return browserLameLoader;
 }
 
 function floatToInt16(samples: Float32Array) {
