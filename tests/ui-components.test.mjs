@@ -134,6 +134,9 @@ test("defines qualified listening without changing like-based rankings", async (
   const memberState = await readFile(path.join(root, "app", "api", "member-state", "route.ts"), "utf8");
   assert.match(home, /\/api\/listening/);
   assert.match(home, /chuneside-listener-id/);
+  assert.match(home, /Join Free/);
+  assert.match(home, /Sign out of ChuneSide\?/);
+  assert.match(home, /window\.location\.assign\(memberSignOutPath\)/);
   assert.match(memberState, /songLikes/);
   assert.doesNotMatch(memberState, /listeningEvents/);
 });
