@@ -255,7 +255,7 @@ export function StageClient({ adminAccessSource, storageReady, artists, releases
         {performances.length > 0 && !visiblePerformances.length && <div className="admin-empty"><Search /><h2>No matching Stage performances</h2><p>Try a different status, placement, sort, or search term.</p></div>}
       </section>
 
-      <StageEditor key={typeof editor === "object" ? editor.id : String(editor)} editor={editor} artists={artists} releases={releases} busy={busyId === "save"} error={error} onClose={() => setEditor(null)} onSubmit={save} />
+      <StageEditor key={editor && typeof editor === "object" ? editor.id : String(editor)} editor={editor} artists={artists} releases={releases} busy={busyId === "save"} error={error} onClose={() => setEditor(null)} onSubmit={save} />
     </main>
   );
 }

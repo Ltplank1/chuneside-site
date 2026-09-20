@@ -498,6 +498,7 @@ test("keeps DJ Stage linked to the existing Stage system behind its own gate", a
   assert.match(stageDetail, /Listen on ChuneSide/);
 });
 
+
 test("orders public Stage performances by active home placement", async () => {
   const { isPlacementActive, sortPublicStagePerformances } = await vite.ssrLoadModule("/lib/public-stage-sort.ts");
   const now = new Date("2026-09-08T12:00:00.000Z");
