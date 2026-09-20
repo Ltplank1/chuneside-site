@@ -68,7 +68,7 @@ function DateTimeFields({ label, prefix, value }: { label: string; prefix: "star
   const date = value ? new Date(value) : null;
   const dateValue = date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : "";
   const timeValue = date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(11, 16) : "";
-  return <div className="ad-datetime-field"><span>{label}</span><div><label><span>Date</span><Input name={`${prefix}Date`} type="date" defaultValue={dateValue} /></label><label><span>Time</span><Input name={`${prefix}Time`} type="time" defaultValue={timeValue} /></label></div></div>;
+  return <div className="ad-datetime-field"><span>{label}</span><div><label><span>Date</span><Input name={`${prefix}Date`} type="date" defaultValue={dateValue} /></label><label><span>Time</span><NativeSelect name={`${prefix}Time`} defaultValue={timeValue}><NativeSelectOption value="">Choose time</NativeSelectOption>{timeOptions.map((option) => <NativeSelectOption key={option.value} value={option.value}>{option.label}</NativeSelectOption>)}</NativeSelect></label></div></div>;
 }
 
 function combineDateTime(date: FormDataEntryValue | null, time: FormDataEntryValue | null) {
@@ -76,3 +76,11 @@ function combineDateTime(date: FormDataEntryValue | null, time: FormDataEntryVal
   const timeText = typeof time === "string" ? time : "";
   return dateText ? new Date(`${dateText}T${timeText || "00:00"}`).toISOString() : null;
 }
+
+const timeOptions = Array.from({ length: 96 }, (_, index) => {
+  const hours = Math.floor(index / 4);
+  const minutes = (index % 4) * 15;
+  const value = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  const hour = hours % 12 || 12;
+  return { value, label: `${hour}:${String(minutes).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}` };
+});
