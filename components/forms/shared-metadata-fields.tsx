@@ -33,6 +33,7 @@ export function PresetField({ label, name, value = "", presets, required = false
 
 export function CountryRegionField({ name = "region", value = "", label = "Country/Region", required = false }: { name?: string; value?: string; label?: string; required?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const optionsRef = useRef<HTMLDivElement>(null);
   const [country, setCountry] = useState(value);
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
@@ -40,10 +41,10 @@ export function CountryRegionField({ name = "region", value = "", label = "Count
   const matches = options.filter((option) => option.toLowerCase().includes(searchTerm.trim().toLowerCase()));
   function choose(next: string) { setCountry(next); setSearchTerm(""); setOpen(false); }
   return <label className="catalog-field"><span>{label}</span><div className="stage-region-combobox">
-    <div className="stage-region-input-wrap"><Input ref={inputRef} required={required} value={country} onFocus={() => { setSearchTerm(""); setOpen(true); }} onChange={(event) => { setCountry(event.target.value); setSearchTerm(event.target.value); setOpen(true); }} onBlur={() => window.setTimeout(() => setOpen(false), 120)} maxLength={120} placeholder="Search a country or type manually" aria-label={label} aria-autocomplete="list" aria-expanded={open} />
+    <div className="stage-region-input-wrap"><Input ref={inputRef} required={required} value={country} onFocus={() => { setSearchTerm(""); setOpen(true); }} onChange={(event) => { setCountry(event.target.value); setSearchTerm(event.target.value); setOpen(true); }} onBlur={() => window.setTimeout(() => { if (!optionsRef.current?.matches(":hover")) setOpen(false); }, 180)} maxLength={120} placeholder="Search a country or type manually" aria-label={label} aria-autocomplete="list" aria-expanded={open} />
       <Button type="button" variant="ghost" size="icon" className="stage-region-toggle" aria-label={`Show ${label} options`} onMouseDown={(event) => event.preventDefault()} onClick={() => { setSearchTerm(""); setOpen((current) => !current); inputRef.current?.focus(); }}><ChevronDown /></Button>
     </div><input type="hidden" name={name} value={country.trim()} />
-    {open && <div className="stage-region-options" role="listbox" aria-label={`${label} options`}>
+    {open && <div ref={optionsRef} className="stage-region-options" role="listbox" aria-label={`${label} options`}>
       {matches.map((option) => <button type="button" role="option" key={option} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(option)}>{option}</button>)}
       {!matches.length && <p>No matching country. Continue typing for manual entry.</p>}
       <button type="button" className="stage-region-manual" onMouseDown={(event) => event.preventDefault()} onClick={() => { setOpen(false); inputRef.current?.focus(); }}>Other / Manual entry</button>
