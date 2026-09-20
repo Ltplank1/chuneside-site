@@ -38,6 +38,7 @@ export async function POST(request: Request) {
   const releaseId = request.headers.get("x-chuneside-release-id");
   const kind = request.headers.get("x-chuneside-media-kind");
   const radioReadyConfirmed = request.headers.get("x-chuneside-radio-ready-confirmed") === "true";
+  const rightsConfirmed = request.headers.get("x-chuneside-rights-confirmed") === "true";
   const detectedDuration = Number(request.headers.get("x-chuneside-duration-seconds") ?? "");
   const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
   const originalName = safeOriginalName(request.headers.get("x-chuneside-original-name"));
@@ -49,6 +50,9 @@ export async function POST(request: Request) {
   }
   if (!radioReadyConfirmed) {
     return NextResponse.json({ error: "Confirm that this is the clean radio-ready version before uploading." }, { status: 400 });
+  }
+  if (!rightsConfirmed) {
+    return NextResponse.json({ error: "Confirm that you hold the required rights before uploading release media." }, { status: 400 });
   }
   const durationSeconds = Number.isInteger(detectedDuration) && detectedDuration > 0 && detectedDuration <= 86400 ? detectedDuration : null;
 
@@ -152,6 +156,7 @@ export async function POST(request: Request) {
     await Promise.all(mediaKind === "audio" ? [] : previous.map((item) => bucket.delete(item.objectKey)));
     await db.update(releases).set({
       explicitStatus: "clean",
+      rightsConfirmed: true,
       radioReadyConfirmed: true,
       ...(kind === "audio" && durationSeconds ? { durationSeconds } : {}),
       approvalStatus: "pending",
@@ -163,7 +168,7 @@ export async function POST(request: Request) {
     await db.insert(adminAuditLogs).values({
       id: randomUUID(), actorId: access.user.id, actorEmail: access.user.email,
       action: "artist.media_upload", entityType: "release_media", entityId: id,
-      details: JSON.stringify({ trackId: releaseId, kind: mediaKind, variant: mediaKind === "audio" ? audioVariant : "master", version, sourceMediaId: sourceMediaId ?? null, replacesMediaIds: previous.map((item) => item.id), contentType, sizeBytes: prepared.size, radioReadyConfirmed: true }), createdAt: now,
+      details: JSON.stringify({ trackId: releaseId, kind: mediaKind, variant: mediaKind === "audio" ? audioVariant : "master", version, sourceMediaId: sourceMediaId ?? null, replacesMediaIds: previous.map((item) => item.id), contentType, sizeBytes: prepared.size, rightsConfirmed: true, radioReadyConfirmed: true }), createdAt: now,
     });
     const [media] = await db.select().from(releaseMedia).where(eq(releaseMedia.id, id)).limit(1);
     return NextResponse.json({ media });

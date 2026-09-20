@@ -218,12 +218,15 @@ test("keeps radio-ready confirmation and platform links in the artist workflow",
 
   assert.match(dashboard, /Create freely\. Submit clean\. Get discovered\./);
   assert.match(dashboard, /name="radioReadyConfirmed"/);
+  assert.match(dashboard, /name="rightsConfirmed"/);
   assert.match(dashboard, /x-chuneside-radio-ready-confirmed/);
+  assert.match(dashboard, /x-chuneside-rights-confirmed/);
   assert.match(profileRoute, /spotifyUrl/);
   assert.match(profileRoute, /appleMusicUrl/);
   assert.match(reviewPage, /radioReadyConfirmed: releases\.radioReadyConfirmed/);
   assert.match(reviewClient, /Radio-ready confirmed/);
   assert.match(mediaRoute, /Confirm that this is the clean radio-ready version before uploading/);
+  assert.match(mediaRoute, /Confirm that you hold the required rights before uploading release media/);
 });
 
 test("keeps release metadata inputs searchable and duration compatible", async () => {

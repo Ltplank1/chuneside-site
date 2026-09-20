@@ -216,6 +216,10 @@ export function ArtistDashboardClient({ displayName, profiles, studioMembers, ai
       setError("Confirm that this is the clean radio-ready version before uploading.");
       return;
     }
+    if (form.get("rightsConfirmed") !== "on") {
+      setError("Confirm that you hold the required rights before uploading release media.");
+      return;
+    }
     const files = (["audio", "cover", "video"] as const).map((kind) => ({ kind, file: form.get(kind) })).filter((item): item is { kind: "audio" | "cover" | "video"; file: File } => item.file instanceof File && item.file.size > 0);
     if (!files.length) { setError("Choose an audio master, cover artwork, or release video."); return; }
     const audioFile = files.find((item) => item.kind === "audio")?.file;
@@ -236,11 +240,11 @@ export function ArtistDashboardClient({ displayName, profiles, studioMembers, ai
       try {
         detectedDuration = item.kind === "audio" ? await detectAudioDuration(item.file) : null;
         const isWav = item.kind === "audio" && (item.file.type === "audio/wav" || item.file.type === "audio/x-wav" || item.file.name.toLowerCase().endsWith(".wav"));
-        const masterData = await uploadArtistMedia(item.file, releaseId, item.kind, detectedDuration, isWav ? { audioVariant: "master" } : { audioVariant: item.kind === "audio" ? "stream" : undefined, mp3Acknowledged: isMp3 });
+        const masterData = await uploadArtistMedia(item.file, releaseId, item.kind, detectedDuration, isWav ? { audioVariant: "master", rightsConfirmed: true } : { audioVariant: item.kind === "audio" ? "stream" : undefined, mp3Acknowledged: isMp3, rightsConfirmed: true });
         setMediaRows((current) => [...current.filter((media) => media.releaseId !== releaseId || media.kind !== item.kind || (item.kind === "audio" && media.variant !== "stream")), masterData.media]);
         if (item.kind === "audio" && isWav) {
           const mp3 = await encodeWavToMp3(item.file);
-          const streamData = await uploadArtistMedia(mp3, releaseId, "audio", detectedDuration, { audioVariant: "stream", sourceMediaId: masterData.media.id });
+          const streamData = await uploadArtistMedia(mp3, releaseId, "audio", detectedDuration, { audioVariant: "stream", sourceMediaId: masterData.media.id, rightsConfirmed: true });
           setMediaRows((current) => [...current.filter((media) => media.releaseId !== releaseId || media.kind !== "audio" || media.variant !== "stream"), streamData.media]);
         }
       } catch (caught) {
@@ -629,6 +633,7 @@ function MediaDialog({ open, releases, busy, error, onClose, onSubmit }: { open:
             <Field label="Release video (optional, 100 MB max)"><Input name="video" type="file" accept="video/mp4,video/webm,video/quicktime" /></Field>
           </div>
           <label className="catalog-check rights-confirmation"><input name="mp3QualityAcknowledged" type="checkbox" /><span>I understand that MP3 quality cannot be restored. Use MP3 only when a WAV master is unavailable.</span></label>
+          <label className="catalog-check rights-confirmation"><input name="rightsConfirmed" type="checkbox" required /><span>I confirm I own or have permission to use the music, samples, artwork, voices, and likenesses in this submission.</span></label>
           <label className="catalog-check rights-confirmation"><input name="radioReadyConfirmed" type="checkbox" required /><span>I confirm these files are the clean, radio-ready version prepared for radio, DJs, promoters, and bigger stages.</span></label>
           {error && <p className="catalog-editor-error" role="alert">{error}</p>}
           <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy || !releases.length}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Upload />} Upload media</Button></DialogFooter>
@@ -765,7 +770,7 @@ function presetValue(form: FormData, name: string) {
   return choice === "Other" ? String(form.get(`${name}Other`) ?? "").trim() : choice;
 }
 
-async function uploadArtistMedia(file: File, releaseId: string, kind: "audio" | "cover" | "video", durationSeconds: number | null, options: { audioVariant?: "master" | "stream"; sourceMediaId?: string; mp3Acknowledged?: boolean }) {
+async function uploadArtistMedia(file: File, releaseId: string, kind: "audio" | "cover" | "video", durationSeconds: number | null, options: { audioVariant?: "master" | "stream"; sourceMediaId?: string; mp3Acknowledged?: boolean; rightsConfirmed?: boolean }) {
   const contentType = file.type || (file.name.toLowerCase().endsWith(".wav") ? "audio/wav" : file.name.toLowerCase().endsWith(".mp3") ? "audio/mpeg" : "");
   let response: Response;
   try {
@@ -777,6 +782,7 @@ async function uploadArtistMedia(file: File, releaseId: string, kind: "audio" | 
         "x-chuneside-media-kind": kind,
         "x-chuneside-original-name": encodeURIComponent(file.name),
         "x-chuneside-radio-ready-confirmed": "true",
+        ...(options.rightsConfirmed ? { "x-chuneside-rights-confirmed": "true" } : {}),
         ...(durationSeconds ? { "x-chuneside-duration-seconds": String(durationSeconds) } : {}),
         ...(options.audioVariant ? { "x-chuneside-audio-variant": options.audioVariant } : {}),
         ...(options.sourceMediaId ? { "x-chuneside-source-media-id": options.sourceMediaId } : {}),
