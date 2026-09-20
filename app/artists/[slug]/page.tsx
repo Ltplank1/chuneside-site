@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BadgeCheck, Disc3, ExternalLink, MapPin, Play, PlaySquare, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPublicArtistProfile } from "@/lib/artist-profile";
+import { isSpokenWordGenre } from "@/lib/submission-options";
 import { getPublishedSiteContent } from "@/lib/site-content";
 import { publicContentStyle } from "@/lib/site-content-shared";
 import { ArtistReleaseList } from "./artist-release-list";
@@ -93,7 +94,7 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
                   <strong>{performance.status === "featured" ? "Featured" : "ChuneSide Stage"} - {performance.performanceType === "dj" ? "DJ performance" : "Artist performance"}</strong>
                   <h3><Link href={`/stage/${performance.slug}`}>{performance.title}</Link></h3>
                   <p>{performance.description || `${performance.genre} performance from ${performance.region}.`}</p>
-                  <small>{performance.songsPerformed.length} {performance.songsPerformed.length === 1 ? "song" : "songs"} · {performance.durationMinutes ?? "--"} min · {performance.region}</small>
+                  <small>{performance.songsPerformed.length} {isSpokenWordGenre(performance.genre) ? (performance.songsPerformed.length === 1 ? "piece" : "pieces") : (performance.songsPerformed.length === 1 ? "song" : "songs")} · {performance.durationMinutes ?? "--"} min · {performance.region}</small>
                   <Button asChild variant="outline"><Link href={`/stage/${performance.slug}`}><Play fill="currentColor" /> Watch performance</Link></Button>
                 </div>
               </article>

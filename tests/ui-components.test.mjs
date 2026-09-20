@@ -561,6 +561,8 @@ test("stage editor exposes normalized slugs and structured scheduling controls",
   ]);
   assert.match(options, /Antigua & Barbuda/);
   assert.match(options, /Turks & Caicos Islands/);
+  assert.match(options, /Spoken Word & Poetry/);
   assert.match(picker, /showPicker/);
   assert.match(picker, /CalendarDays/);
+  assert.match(source, /Songs or pieces performed/);
 });

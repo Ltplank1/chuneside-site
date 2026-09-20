@@ -1,7 +1,11 @@
 export const genrePresets = [
   "Afrobeats", "Afrobeat", "Alternative", "Calypso", "Dancehall", "Electronic",
-  "Gospel", "Hip Hop/Rap", "Hip-hop", "House", "Pop", "R&B", "Reggae", "Rock", "Soca", "World",
+  "Gospel", "Hip Hop/Rap", "Hip-hop", "House", "Pop", "R&B", "Reggae", "Rock", "Soca", "Spoken Word & Poetry", "World",
 ] as const;
+
+export function isSpokenWordGenre(value: string | null | undefined) {
+  return value?.trim().toLowerCase() === "spoken word & poetry";
+}
 
 export const moodPresets = [
   "Calm", "Confident", "Energetic", "Joyful", "Melancholic", "Peaceful",

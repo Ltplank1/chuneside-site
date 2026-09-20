@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { filterPublicStagePerformances, getPublicStagePerformances } from "@/lib/public-stage";
 import { getPublishedSiteContent } from "@/lib/site-content";
 import { publicContentStyle } from "@/lib/site-content-shared";
+import { isSpokenWordGenre } from "@/lib/submission-options";
 import { StageViewTracker } from "./stage-view-tracker";
 
 export const dynamic = "force-dynamic";
@@ -133,7 +134,7 @@ export default async function StagePage({ searchParams }: { searchParams?: Promi
                 <h3><Link href={`/stage/${performance.slug}`}>{performance.title}</Link></h3>
                 <Link href={`/artists/${performance.artistSlug}`}>{performance.artistStageName}</Link>
                 <p>{performance.description || `${performance.genre} performance from ${performance.region}.`}</p>
-                <small><MapPin /> {performance.region} · {performance.durationMinutes ?? "--"} min · {performance.performanceType === "dj" ? performance.tracklist.length : performance.songsPerformed.length} {performance.performanceType === "dj" ? "tracks" : "songs"} · {performance.viewCount.toLocaleString()} views</small>
+                <small><MapPin /> {performance.region} · {performance.durationMinutes ?? "--"} min · {performance.performanceType === "dj" ? performance.tracklist.length : performance.songsPerformed.length} {performance.performanceType === "dj" ? "tracks" : isSpokenWordGenre(performance.genre) ? "pieces" : "songs"} · {performance.viewCount.toLocaleString()} views</small>
                 <div className="stage-card-actions"><Button asChild><Link href={`/stage/${performance.slug}`}><Play /> Watch performance</Link></Button><Button asChild variant="outline"><a href={performance.youtubeUrl ?? `https://www.youtube.com/watch?v=${performance.youtubeVideoId}`} target="_blank" rel="noreferrer"><ExternalLink /> Open YouTube</a></Button></div>
               </div>
             </article>

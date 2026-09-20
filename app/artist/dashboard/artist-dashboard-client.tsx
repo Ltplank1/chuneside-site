@@ -697,7 +697,7 @@ function StageSubmissionDialog({ open, profiles, performance, busy, error, onClo
           <SharedGenreField value={performance?.genre ?? ""} required />
           <SharedCountryRegionField value={performance?.region ?? ""} label="Country/Region" required />
           <Field label="Performance date"><DateTimeInput name="performanceDate" type="datetime-local" defaultValue={dateTimeLocal(performance?.performanceDate)} /></Field>
-          <Field label="Songs performed" wide><Textarea name="songsPerformed" maxLength={1000} defaultValue={songsText(performance?.songsPerformedJson)} placeholder={"Song one\nSong two\nSong three"} /></Field>
+          <Field label="Songs or pieces performed" wide><Textarea name="songsPerformed" maxLength={1000} defaultValue={songsText(performance?.songsPerformedJson)} placeholder={"Song or piece one\nSong or piece two\nSong or piece three"} /></Field>
           <Field label="Description" wide><Textarea name="description" maxLength={2000} defaultValue={performance?.description ?? ""} /></Field>
           <Field label="Submission context" wide><Textarea name="originalSubmissionInfo" maxLength={2000} defaultValue={performance?.originalSubmissionInfo ?? ""} placeholder="Optional information for the Stage review team." /></Field>
         </div>
