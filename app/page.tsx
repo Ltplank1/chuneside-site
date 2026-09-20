@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { demoTracks, parseTrackDuration, type PublicTrack } from "@/lib/public-catalog";
+import { defaultSiteContent, publicContentStyle, type SiteContentStyle } from "@/lib/site-content-shared";
 
 const videos = [
   { eyebrow: "ChuneSide premiere · 268", artist: "Kaia Rivers", title: "Golden Hour", note: "Featured music video", tint: "hero-a", trackId: 1 },
@@ -59,6 +60,9 @@ type PublicStagePerformance = {
   status: "published" | "featured";
 };
 
+type PublicSiteContent = Record<string, { value: string; style: SiteContentStyle }>;
+const defaultCopy = defaultSiteContent() as PublicSiteContent;
+
 function Cover({ track, large = false }: { track: PublicTrack; large?: boolean }) {
   return <div className={`cover relative overflow-hidden bg-gradient-to-br ${track.colors} ${large ? "aspect-[1.07]" : "aspect-square"}`}>
     {track.coverImageUrl && <Image className="cover-art" src={track.coverImageUrl} alt={`${track.title} cover artwork`} fill sizes={large ? "(max-width: 900px) 100vw, 50vw" : "(max-width: 650px) 100vw, 25vw"} unoptimized />}
@@ -100,6 +104,7 @@ export default function Home() {
   const [features, setFeatures] = useState<PublicFeatureSnapshot | null>(null);
   const [announcements, setAnnouncements] = useState<PublicAnnouncement[]>([]);
   const [stagePerformances, setStagePerformances] = useState<PublicStagePerformance[]>([]);
+  const [siteCopy, setSiteCopy] = useState<PublicSiteContent>(defaultCopy);
   const [catalogUrlReady, setCatalogUrlReady] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const listenerTokenRef = useRef<string | null>(null);
@@ -162,6 +167,9 @@ export default function Home() {
     fetch("/api/announcements")
       .then((response) => response.ok ? response.json() : null)
       .then((data) => Array.isArray(data?.announcements) && !cancelled && setAnnouncements(data.announcements));
+    fetch("/api/site-content")
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => data?.content && !cancelled && setSiteCopy({ ...defaultCopy, ...data.content }));
     fetch("/api/stage?placement=home&limit=3")
       .then((response) => response.ok ? response.json() : null)
       .then((data) => data?.available && Array.isArray(data?.performances) && !cancelled && setStagePerformances(data.performances));
@@ -248,6 +256,8 @@ export default function Home() {
   const sponsorshipsOn = featureOn("sponsorships");
   const artistWorkspaceOn = featureOn("artist_workspace", false);
   const chunesideStageOn = featureOn("chuneside_stage", false);
+  const copy = (key: string, fallback: string) => siteCopy[key]?.value ?? fallback;
+  const copyStyle = (key: string) => publicContentStyle(siteCopy[key]?.style ?? defaultCopy[key]?.style ?? defaultCopy["home.hero.description"].style);
   // These server routes choose Supabase in production and retain the local fallback when it is not configured.
   const memberSignInPath = "/auth/sign-in?returnTo=%2F%23charts";
   const memberSignOutPath = "/auth/sign-out?returnTo=%2F";
@@ -320,9 +330,9 @@ export default function Home() {
       <div className="hero-shade" />
       <div className="hero-brand-ghost"><Image src="/chuneside-logo-v2.png" alt="" width={420} height={184} priority unoptimized /></div>
       <div className="cinema-copy">
-        <div className="eyebrow"><span /> {hero.eyebrow}</div>
+        <div className="eyebrow" style={copyStyle("home.hero.eyebrow")}><span /> {copy("home.hero.eyebrow", hero.eyebrow)}</div>
         <h1>{hero.title === "Golden Hour" ? <>Local sound.<br /><em>World stage.</em></> : <>{hero.title}<br /><em>{hero.artist}</em></>}</h1>
-        <p>Wadadli leads the mix. The Caribbean joins the rhythm. Selected independent voices from around the world are welcome.</p>
+        <p style={copyStyle("home.hero.description")}>{copy("home.hero.description", "Wadadli leads the mix. The Caribbean joins the rhythm. Selected independent voices from around the world are welcome.")}</p>
         <div className="hero-actions"><Button size="lg" disabled={!tracks.length} onClick={() => chooseTrack(tracks.find((track) => track.id === hero.trackId) ?? tracks[0])}><Play fill="currentColor" /> Play feature</Button><Button size="lg" variant="outline" asChild><a href="#discover">Explore music <ArrowRight /></a></Button></div>
       </div>
       <div className="premiere-card"><span>{hero.note}</span><strong>{hero.artist}</strong><p>{hero.title}</p><small>Demo visual — replace with any approved feature video</small></div>
@@ -352,7 +362,7 @@ export default function Home() {
     </section>}
 
     <section id="discover" className="discover section-wrap">
-      <div className="section-heading"><div><span className="kicker"><Radio /> ChuneSide radio · Discovery</span><h2>Find your next chune.</h2></div><label className="search-box"><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search music, artist or island" aria-label="Search music, artist or island" /></label></div>
+      <div className="section-heading"><div><span className="kicker" style={copyStyle("discover.eyebrow")}><Radio /> {copy("discover.eyebrow", "ChuneSide radio · Discovery")}</span><h2 style={copyStyle("discover.heading")}>{copy("discover.heading", "Find your next chune.")}</h2></div><label className="search-box"><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search music, artist or island" aria-label="Search music, artist or island" /></label></div>
       <Tabs value={lane} onValueChange={setLane} className="music-tabs">
         <TabsList><TabsTrigger value="all">All music</TabsTrigger><TabsTrigger value="wadadli">Wadadli</TabsTrigger><TabsTrigger value="caribbean">Caribbean</TabsTrigger><TabsTrigger value="ai">AI-assisted</TabsTrigger><TabsTrigger value="world">World</TabsTrigger></TabsList>
         <TabsContent value={lane}>
@@ -404,11 +414,11 @@ export default function Home() {
       <div className="funding-grid"><article><span>01</span><strong>Curated sponsors</strong><p>One tasteful landing-page placement from a trusted local or regional brand.</p></article><article><span>02</span><strong>Supported premieres</strong><p>A brand can fund an interview or video premiere, with transparent sponsor labelling.</p></article><article><span>03</span><strong>Contest partners</strong><p>Businesses fund prizes, studio time or performance opportunities for artists.</p></article><article><span>04</span><strong>Fan support later</strong><p>Add memberships, tips or merch links once the audience and catalogue are established.</p></article></div>
     </section>}
 
-    <section id="submit" className="submit-section section-wrap"><div className="submit-icon"><Send /></div><span className="kicker">Artists &amp; managers worldwide</span><h2>Bring your sound<br />to the Side.</h2><p>Send your finished track, cover artwork, short biography, social links and creation disclosure. Wadadli artists receive priority placement; exceptional Caribbean and international work can enter the wider lanes.</p><div className="submit-actions"><Button size="lg" asChild><a href="mailto:chuneside@gmail.com?subject=ChuneSide%20Music%20Submission&body=Artist%20name%3A%0ASong%20title%3A%0ACountry%3A%0AGenre%3A%0AArtist-made%20or%20AI-assisted%3A%0ASocial%20links%3A%0A%0APlease%20attach%20your%20track%2C%20artwork%2C%20short%20bio%20and%20rights%20confirmation.">Submit to chuneside@gmail.com <ArrowRight /></a></Button>{artistWorkspaceOn && <Button size="lg" variant="outline" asChild><Link href="/artist/dashboard">Artist Dashboard <ArrowRight /></Link></Button>}</div><div className="submission-steps"><span><b>01</b>Send your package</span><span><b>02</b>Rights + safety review</span><span><b>03</b>Approved music goes live</span></div></section>
+    <section id="submit" className="submit-section section-wrap"><div className="submit-icon"><Send /></div><span className="kicker" style={copyStyle("submit_release.eyebrow")}>{copy("submit_release.eyebrow", "Artists & managers worldwide")}</span><h2 style={copyStyle("submit_release.heading")}>{copy("submit_release.heading", "Bring your sound to the Side.")}</h2><p style={copyStyle("submit_release.description")}>{copy("submit_release.description", "Send your finished track, cover artwork, short biography, social links and creation disclosure.")}</p><div className="submit-actions"><Button size="lg" asChild><a href="mailto:chuneside@gmail.com?subject=ChuneSide%20Music%20Submission&body=Artist%20name%3A%0ASong%20title%3A%0ACountry%3A%0AGenre%3A%0AArtist-made%20or%20AI-assisted%3A%0ASocial%20links%3A%0A%0APlease%20attach%20your%20track%2C%20artwork%2C%20short%20bio%20and%20rights%20confirmation.">Submit to chuneside@gmail.com <ArrowRight /></a></Button>{artistWorkspaceOn && <Button size="lg" variant="outline" asChild><Link href="/artist/dashboard">Artist Dashboard <ArrowRight /></Link></Button>}</div><div className="submission-steps"><span><b>01</b>Send your package</span><span><b>02</b>Rights + safety review</span><span><b>03</b>Approved music goes live</span></div></section>
 
-    <footer><a href="#top" className="brand brand-image"><Image src="/chuneside-logo-v2.png" alt="ChuneSide" width={420} height={184} unoptimized /></a><p>From Wadadli, the Caribbean and the World.</p><div className="footer-actions"><button onClick={share}><Share2 /> Share ChuneSide</button><a href="mailto:chuneside@gmail.com"><ExternalLink /> Email</a></div><span>© 2026 ChuneSide</span></footer>
+    <footer><a href="#top" className="brand brand-image"><Image src="/chuneside-logo-v2.png" alt="ChuneSide" width={420} height={184} unoptimized /></a><p style={copyStyle("breaks_footer.tagline")}>{copy("breaks_footer.tagline", "From Wadadli, the Caribbean and the World.")}</p><div className="footer-actions"><button onClick={share}><Share2 /> Share ChuneSide</button><a href="mailto:chuneside@gmail.com"><ExternalLink /> Email</a></div><span>© 2026 ChuneSide</span></footer>
 
-    <Dialog open={memberGate} onOpenChange={setMemberGate}><DialogContent className="member-dialog"><DialogHeader><DialogTitle>Join ChuneSide to make it count</DialogTitle><DialogDescription>Listening is open to guests. Likes and artist follows are reserved for signed-in members so every chart position represents a unique person.</DialogDescription></DialogHeader><div className="member-benefits"><span><Heart /> One verified Like per song</span><span><Trophy /> Help shape monthly rankings</span><span><UserPlus /> Follow your favourite artists</span></div><Button asChild><a href={memberSignInPath}>Sign in or create an account <ArrowRight /></a></Button><small>Free membership. Your email is used only to identify your unique ChuneSide account.</small></DialogContent></Dialog>
+    <Dialog open={memberGate} onOpenChange={setMemberGate}><DialogContent className="member-dialog"><DialogHeader><DialogTitle style={copyStyle("membership.dialog_title")}>{copy("membership.dialog_title", "Join ChuneSide to make it count")}</DialogTitle><DialogDescription style={copyStyle("membership.dialog_description")}>{copy("membership.dialog_description", "Listening is open to guests. Likes and artist follows are reserved for signed-in members so every chart position represents a unique person.")}</DialogDescription></DialogHeader><div className="member-benefits"><span><Heart /> One verified Like per song</span><span><Trophy /> Help shape monthly rankings</span><span><UserPlus /> Follow your favourite artists</span></div><Button asChild><a href={memberSignInPath}>Sign in or create an account <ArrowRight /></a></Button><small>Free membership. Your email is used only to identify your unique ChuneSide account.</small></DialogContent></Dialog>
 
       <audio ref={audioRef} src={active?.audioUrl ?? undefined} onTimeUpdate={(event) => { const audio = event.currentTarget; if (audio.duration) setProgress(audio.currentTime / audio.duration * 100); }} onEnded={() => { void sendListeningEvent("complete"); setPlaying(false); listeningSessionRef.current = null; moveTrack(1); }} onError={() => setPlaying(false)} preload="metadata" />
     <aside className="now-playing" aria-label={active?.audioUrl ? "Audio player" : "Catalogue player"}><div className={`mini-cover bg-gradient-to-br ${active?.colors ?? "from-[#242832] via-[#171a21] to-[#090a0d]"}`}>{active?.coverImageUrl ? <Image src={active.coverImageUrl} alt="" fill sizes="46px" unoptimized /> : active?.mark ?? <Disc3 />}</div><div className="now-meta"><strong>{active?.title ?? "No approved chunes"}</strong><span>{active ? `${active.artist} · ${active.audioUrl ? "Now playing" : "Preview mode"}` : "The live catalogue is being prepared."}</span></div><div className="player-controls"><button disabled={!active} onClick={() => moveTrack(-1)} aria-label="Previous track"><SkipBack /></button><button className="main-play" disabled={!active} onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}>{playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button><button disabled={!active} onClick={() => moveTrack(1)} aria-label="Next track"><SkipForward /></button></div><input className="progress-range" type="range" min="0" max="100" step=".1" value={progress} disabled={!active} onChange={(event) => seekTrack(Number(event.target.value))} aria-label="Track progress" /><span className="time">{formatPlayerTime(activeDuration * progress / 100)} / {active?.duration ?? "--"}</span><label className="volume"><Volume2 /><input type="range" min="0" max="100" value={volume} onChange={(event) => setVolume(Number(event.target.value))} aria-label="Volume" /></label><ChevronDown className="queue" /></aside>

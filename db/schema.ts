@@ -199,6 +199,31 @@ export const communityAnnouncements = sqliteTable("community_announcements", {
   index("idx_community_announcements_dates").on(table.startAt, table.endAt),
 ]);
 
+export const siteContent = sqliteTable("site_content", {
+  key: text("key").primaryKey(),
+  section: text("section").notNull(),
+  label: text("label").notNull(),
+  description: text("description").notNull(),
+  defaultValue: text("default_value").notNull(),
+  draftValue: text("draft_value").notNull(),
+  publishedValue: text("published_value").notNull(),
+  draftFontFamily: text("draft_font_family", { enum: ["sans", "display", "mono"] }).notNull().default("sans"),
+  publishedFontFamily: text("published_font_family", { enum: ["sans", "display", "mono"] }).notNull().default("sans"),
+  draftSize: text("draft_size", { enum: ["small", "medium", "large", "hero"] }).notNull().default("medium"),
+  publishedSize: text("published_size", { enum: ["small", "medium", "large", "hero"] }).notNull().default("medium"),
+  draftWeight: text("draft_weight", { enum: ["normal", "semibold", "bold"] }).notNull().default("normal"),
+  publishedWeight: text("published_weight", { enum: ["normal", "semibold", "bold"] }).notNull().default("normal"),
+  draftAlign: text("draft_align", { enum: ["left", "center"] }).notNull().default("left"),
+  publishedAlign: text("published_align", { enum: ["left", "center"] }).notNull().default("left"),
+  status: text("status", { enum: ["draft", "published"] }).notNull().default("published"),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+  updatedBy: text("updated_by"),
+}, (table) => [
+  index("idx_site_content_section").on(table.section),
+  index("idx_site_content_status").on(table.status),
+]);
+
 export const aiUploadSettings = sqliteTable("ai_upload_settings", {
   id: text("id").primaryKey(),
   restrictionEnabled: integer("restriction_enabled", { mode: "boolean" }).notNull().default(true),

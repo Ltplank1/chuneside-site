@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BadgeCheck, Disc3, ExternalLink, MapPin, Play, PlaySquare, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPublicArtistProfile } from "@/lib/artist-profile";
+import { getPublishedSiteContent } from "@/lib/site-content";
+import { publicContentStyle } from "@/lib/site-content-shared";
 import { ArtistReleaseList } from "./artist-release-list";
 
 type ArtistPageProps = { params: Promise<{ slug: string }> };
@@ -30,6 +32,7 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
   const { slug } = await params;
   const artist = await getPublicArtistProfile(slug);
   if (!artist) notFound();
+  const content = await getPublishedSiteContent();
 
   const leadRelease = artist.releases[0];
   const visualClass = leadRelease?.colors ?? "from-[#242832] via-[#171a21] to-[#090a0d]";
@@ -101,7 +104,7 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
 
       <section className="artist-release-section" id="releases">
         <div className="artist-release-heading">
-          <div><p className="kicker"><Disc3 /> Approved releases</p><h2>Music by {artist.stageName}</h2></div>
+          <div><p className="kicker" style={publicContentStyle(content["artists.releases_heading"].style)}><Disc3 /> {content["artists.releases_heading"].value}</p><h2>Music by {artist.stageName}</h2></div>
           <span>{artist.releases.length} {artist.releases.length === 1 ? "release" : "releases"}</span>
         </div>
 

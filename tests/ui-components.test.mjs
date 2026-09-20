@@ -164,6 +164,28 @@ test("exposes protected listening analytics with date filters and song drill-dow
   assert.match(shareRoute, /approvalStatus, "approved"/);
 });
 
+test("provides a persistent, curated site content editor with safe publishing controls", async () => {
+  const [schema, migration, shared, adminRoute, publicRoute, adminPage, adminClient] = await Promise.all([
+    readFile(path.join(root, "db", "schema.ts"), "utf8"),
+    readFile(path.join(root, "drizzle", "0012_site_content.sql"), "utf8"),
+    readFile(path.join(root, "lib", "site-content-shared.ts"), "utf8"),
+    readFile(path.join(root, "app", "api", "admin", "site-content", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "api", "site-content", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "admin", "site-content", "page.tsx"), "utf8"),
+    readFile(path.join(root, "app", "admin", "site-content", "site-content-client.tsx"), "utf8"),
+  ]);
+  assert.match(schema, /siteContent/);
+  assert.match(migration, /CREATE TABLE `site_content`/);
+  assert.match(shared, /submit_release/);
+  assert.match(shared, /contentFontFamilies/);
+  assert.match(adminRoute, /action: z\.enum\(\["save", "publish", "restore"\]\)/);
+  assert.match(adminRoute, /requireAdminUser/);
+  assert.match(publicRoute, /getPublishedSiteContent/);
+  assert.match(adminPage, /admin\/site-content/);
+  assert.match(adminClient, /Drafts stay private until published/);
+  assert.match(adminClient, /Restore default/);
+});
+
 test("provides a stable artist slug for every demo track", async () => {
   const { demoTracks } = await vite.ssrLoadModule("/lib/public-catalog.ts");
 

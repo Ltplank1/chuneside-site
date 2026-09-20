@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowLeft, Disc3, ExternalLink, MapPin, Play, PlaySquare, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { filterPublicStagePerformances, getPublicStagePerformances } from "@/lib/public-stage";
+import { getPublishedSiteContent } from "@/lib/site-content";
+import { publicContentStyle } from "@/lib/site-content-shared";
 import { StageViewTracker } from "./stage-view-tracker";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +31,7 @@ export default async function StagePage({ searchParams }: { searchParams?: Promi
   };
   const sort = stageSort(firstParam(params.sort));
   const { performances: allPerformances, available, source } = await getPublicStagePerformances();
+  const content = await getPublishedSiteContent();
   const performances = sortStagePerformances(filterPublicStagePerformances(allPerformances, filters), sort);
   const featured = performances.find((performance) => performance.status === "featured") ?? performances[0] ?? allPerformances[0];
   const regions = uniqueValues(allPerformances.map((performance) => performance.region));
@@ -54,8 +57,8 @@ export default async function StagePage({ searchParams }: { searchParams?: Promi
       <section className="stage-hero">
         <div className="stage-hero-copy">
           <p className="kicker"><Sparkles /> ChuneSide Stage</p>
-          <h1>Live sets. Real consent. Island-first spotlight.</h1>
-          <p>Short professional performance features using YouTube embeds first, controlled from Admin and published only after artist consent is confirmed.</p>
+          <h1 style={publicContentStyle(content["stage.heading"].style)}>{content["stage.heading"].value}</h1>
+          <p style={publicContentStyle(content["stage.description"].style)}>{content["stage.description"].value}</p>
           {featured && <Button asChild><Link href={`/stage/${featured.slug}`}><Play fill="currentColor" /> Watch featured</Link></Button>}
         </div>
         <div className="stage-hero-frame">
