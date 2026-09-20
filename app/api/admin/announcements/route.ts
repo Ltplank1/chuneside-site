@@ -19,6 +19,8 @@ const saveInput = z.object({
   message: z.string().trim().min(1).max(240),
   linkUrl: optionalUrl,
   category: z.enum(["community", "release", "competition", "stage", "maintenance", "artist", "general"]),
+  showCategory: z.boolean(),
+  categoryPosition: z.enum(["left", "right"]),
   enabled: z.boolean(),
   sortOrder: z.number().int().min(0).max(9999),
   scrollSpeedSeconds: z.number().int().min(10).max(120),
@@ -86,11 +88,13 @@ export async function POST(request: Request) {
 
     const input = parsed.data;
     const id = input.id || randomUUID();
-    const defaults = { animationStyle: "scroll" as const, animationBehavior: "loop" as const, animationDurationSeconds: 28, animationDelaySeconds: 0, position: "below_header" as const, textSize: "medium" as const, fontStyle: "bold" as const, textColor: "#07080a", backgroundColor: "#dfff00", backgroundTransparent: false, barHeight: 42, padding: 16, fontFamily: "sans" as const, fontWeight: "bold" as const };
+    const defaults = { animationStyle: "scroll" as const, animationBehavior: "loop" as const, animationDurationSeconds: 28, animationDelaySeconds: 0, position: "below_header" as const, textSize: "medium" as const, fontStyle: "bold" as const, textColor: "#07080a", backgroundColor: "#dfff00", backgroundTransparent: false, barHeight: 42, padding: 16, fontFamily: "sans" as const, fontWeight: "bold" as const, showCategory: false, categoryPosition: "left" as const };
     const values = {
       message: input.message,
       linkUrl: input.linkUrl,
       category: input.category,
+      showCategory: input.restoreDefaults ? defaults.showCategory : input.showCategory,
+      categoryPosition: input.restoreDefaults ? defaults.categoryPosition : input.categoryPosition,
       enabled: input.enabled,
       sortOrder: input.sortOrder,
       scrollSpeedSeconds: input.scrollSpeedSeconds,

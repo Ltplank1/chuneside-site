@@ -40,6 +40,8 @@ type PublicAnnouncement = {
   message: string;
   linkUrl: string | null;
   category: "community" | "release" | "competition" | "stage" | "maintenance" | "artist" | "general";
+  showCategory: boolean;
+  categoryPosition: "left" | "right";
   scrollSpeedSeconds: number;
   animationStyle: "scroll" | "slide_left" | "slide_right" | "drop_in" | "rise" | "fade" | "zoom" | "bounce" | "pulse" | "pop" | "typewriter" | "static";
   animationBehavior: "once" | "loop" | "delay";
@@ -472,8 +474,8 @@ function CommunityNewsBar({ announcements }: { announcements: PublicAnnouncement
   const lead = announcements[0];
   const duration = Math.max(1, Math.min(120, Math.round(lead.animationDurationSeconds ?? lead.scrollSpeedSeconds ?? 28)));
   const animated = lead.animationStyle !== "static";
-  const items = animated && lead.animationBehavior !== "once" && announcements.length === 1 ? [...announcements, ...announcements] : announcements;
-  const className = `community-news-bar news-position-${lead.position ?? "below_header"} news-animation-${lead.animationStyle ?? "scroll"} news-behavior-${lead.animationBehavior ?? "loop"} text-${lead.textSize ?? "medium"} font-${lead.fontStyle ?? "bold"} family-${lead.fontFamily ?? "sans"}`;
+  const items = announcements;
+  const className = `community-news-bar news-position-${lead.position ?? "below_header"} news-animation-${lead.animationStyle ?? "scroll"} news-behavior-${lead.animationBehavior ?? "loop"} ${announcements.length === 1 ? "news-single" : ""} text-${lead.textSize ?? "medium"} font-${lead.fontStyle ?? "bold"} family-${lead.fontFamily ?? "sans"}`;
   const style = {
     "--news-speed": `${duration}s`, "--news-delay": `${Math.max(0, lead.animationDelaySeconds ?? 0)}s`, "--news-text-color": lead.textColor ?? "#07080a", "--news-background": lead.backgroundTransparent ? "transparent" : lead.backgroundColor ?? "#dfff00", "--news-height": `${Math.max(28, lead.barHeight ?? 42)}px`, "--news-padding": `${Math.max(0, lead.padding ?? 16)}px`, "--news-background-image": lead.backgroundImageUrl ? `url("${lead.backgroundImageUrl}")` : "none",
   } as CSSProperties;
@@ -481,7 +483,8 @@ function CommunityNewsBar({ announcements }: { announcements: PublicAnnouncement
     <section className={className} aria-label="ChuneSide community announcements" style={style}>
       <div className="news-track">
         {items.map((item, index) => {
-          const content = <><Megaphone /><span>{titleCase(item.category)}</span><strong>{item.message}</strong></>;
+          const category = item.showCategory ? <span className={`news-category news-category-${item.categoryPosition ?? "left"}`}>{titleCase(item.category)}</span> : null;
+          const content = item.categoryPosition === "right" ? <><Megaphone /><strong>{item.message}</strong>{category}</> : <><Megaphone />{category}<strong>{item.message}</strong></>;
           return item.linkUrl
             ? <a href={item.linkUrl} key={`${item.id}-${index}`}>{content}</a>
             : <p key={`${item.id}-${index}`}>{content}</p>;

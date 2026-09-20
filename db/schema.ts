@@ -184,6 +184,8 @@ export const communityAnnouncements = sqliteTable("community_announcements", {
   message: text("message").notNull(),
   linkUrl: text("link_url"),
   category: text("category", { enum: ["community", "release", "competition", "stage", "maintenance", "artist", "general"] }).notNull().default("general"),
+  showCategory: integer("show_category", { mode: "boolean" }).notNull().default(false),
+  categoryPosition: text("category_position", { enum: ["left", "right"] }).notNull().default("left"),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(100),
   scrollSpeedSeconds: integer("scroll_speed_seconds").notNull().default(28),

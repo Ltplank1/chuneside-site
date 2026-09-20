@@ -359,9 +359,10 @@ test("keeps the ChuneSide Visualizer lightweight, opt-in, and isolated from play
 });
 
 test("extends the existing News Bar with scheduled motion, safe styling, preview, and media controls", async () => {
-  const [schema, migration, publicRoute, adminRoute, adminClient, home, css] = await Promise.all([
+  const [schema, migration, categoryMigration, publicRoute, adminRoute, adminClient, home, css] = await Promise.all([
     readFile(path.join(root, "db", "schema.ts"), "utf8"),
     readFile(path.join(root, "drizzle", "0014_news_reel_motion.sql"), "utf8"),
+    readFile(path.join(root, "drizzle", "0015_news_reel_category_display.sql"), "utf8"),
     readFile(path.join(root, "app", "api", "announcements", "route.ts"), "utf8"),
     readFile(path.join(root, "app", "api", "admin", "announcements", "route.ts"), "utf8"),
     readFile(path.join(root, "app", "admin", "announcements", "announcements-client.tsx"), "utf8"),
@@ -371,13 +372,17 @@ test("extends the existing News Bar with scheduled motion, safe styling, preview
 
   assert.match(schema, /animationStyle/);
   assert.match(migration, /animation_style/);
+  assert.match(categoryMigration, /show_category/);
+  assert.match(categoryMigration, /category_position/);
   assert.match(publicRoute, /backgroundImageUrl/);
   assert.match(adminRoute, /animationDurationSeconds/);
   assert.match(adminRoute, /restoreDefaults/);
   assert.match(adminClient, /Live preview/);
   assert.match(adminClient, /Custom background graphic/);
   assert.match(home, /news-animation-\$\{lead\.animationStyle/);
+  assert.match(home, /showCategory/);
   assert.match(css, /news-animation-typewriter/);
+  assert.match(css, /news-reel-pop-hold/);
   assert.match(css, /news-position-bottom/);
 });
 

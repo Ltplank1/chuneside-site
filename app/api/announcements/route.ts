@@ -23,6 +23,8 @@ export async function GET() {
       message: communityAnnouncements.message,
       linkUrl: communityAnnouncements.linkUrl,
       category: communityAnnouncements.category,
+      showCategory: communityAnnouncements.showCategory,
+      categoryPosition: communityAnnouncements.categoryPosition,
       scrollSpeedSeconds: communityAnnouncements.scrollSpeedSeconds,
       animationStyle: communityAnnouncements.animationStyle,
       animationBehavior: communityAnnouncements.animationBehavior,

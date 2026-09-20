@@ -15,6 +15,8 @@ type Announcement = {
   message: string;
   linkUrl: string | null;
   category: "community" | "release" | "competition" | "stage" | "maintenance" | "artist" | "general";
+  showCategory: boolean;
+  categoryPosition: "left" | "right";
   enabled: boolean;
   sortOrder: number;
   scrollSpeedSeconds: number;
@@ -69,6 +71,8 @@ export function AnnouncementsClient({ adminAccessSource, initialAnnouncements }:
         message: form.get("message"),
         linkUrl: form.get("linkUrl"),
         category: form.get("category"),
+        showCategory: form.get("showCategory") === "on",
+        categoryPosition: form.get("categoryPosition"),
         enabled: form.get("enabled") === "on",
         sortOrder: Number(form.get("sortOrder")),
         scrollSpeedSeconds: Number(form.get("scrollSpeedSeconds")),
@@ -239,6 +243,7 @@ function AnnouncementEditor({ editor, busy, error, onClose, onSubmit }: {
             <Field label="Message" wide><Textarea name="message" required maxLength={240} defaultValue={announcement?.message ?? ""} /></Field>
             <Field label="Optional link"><Input name="linkUrl" type="url" defaultValue={announcement?.linkUrl ?? ""} /></Field>
             <Field label="Category"><Choice name="category" value={announcement?.category ?? "general"} options={["general", "community", "release", "competition", "stage", "maintenance", "artist"]} /></Field>
+            <Field label="Category position"><Choice name="categoryPosition" value={announcement?.categoryPosition ?? "left"} options={["left", "right"]} /></Field>
             <Field label="Order"><Input name="sortOrder" type="number" min={0} max={9999} required defaultValue={announcement?.sortOrder ?? 100} /></Field>
             <Field label="Scroll speed seconds"><Input name="scrollSpeedSeconds" type="number" min={10} max={120} required defaultValue={announcement?.scrollSpeedSeconds ?? 28} /></Field>
             <Field label="Animation style"><Choice name="animationStyle" value={announcement?.animationStyle ?? "scroll"} options={["scroll", "slide_left", "slide_right", "drop_in", "rise", "fade", "zoom", "bounce", "pulse", "pop", "typewriter", "static"]} /></Field>
@@ -258,6 +263,7 @@ function AnnouncementEditor({ editor, busy, error, onClose, onSubmit }: {
             <Field label="Start date"><Input name="startAt" type="datetime-local" defaultValue={dateTimeLocal(announcement?.startAt)} /></Field>
             <Field label="End date"><Input name="endAt" type="datetime-local" defaultValue={dateTimeLocal(announcement?.endAt)} /></Field>
             <label className="catalog-check"><input name="enabled" type="checkbox" defaultChecked={announcement?.enabled ?? true} /><span>Enabled</span></label>
+            <label className="catalog-check"><input name="showCategory" type="checkbox" defaultChecked={announcement?.showCategory ?? false} /><span>Show category label in the reel</span></label>
             <label className="catalog-check"><input name="backgroundTransparent" type="checkbox" defaultChecked={announcement?.backgroundTransparent ?? false} /><span>Use transparent background color</span></label>
             <label className="catalog-check"><input name="removeBackgroundImage" type="checkbox" /><span>Remove existing background graphic</span></label>
             <label className="catalog-check"><input name="restoreDefaults" type="checkbox" /><span>Restore animation and design defaults</span></label>
