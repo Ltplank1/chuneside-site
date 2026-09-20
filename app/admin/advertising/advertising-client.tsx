@@ -38,13 +38,13 @@ export function AdvertisingClient({ adminAccessSource }: { adminAccessSource: "a
     }) });
     const data = await response.json() as { campaign?: Campaign; error?: string };
     if (!response.ok || !data.campaign) { setError(data.error ?? "Campaign could not be saved."); setBusy(false); return; }
-    const video = form.get("video"); const poster = form.get("poster");
+    const video = form.get("video"); const poster = form.get("poster"); let uploadError = "";
     for (const [kind, file] of [["video", video], ["poster", poster]] as const) if (file instanceof File && file.size) {
       const upload = new FormData(); upload.set("campaignId", data.campaign.id); upload.set("kind", kind); upload.set("file", file);
       const uploadResponse = await fetch("/api/admin/advertising/media", { method: "POST", body: upload });
-      if (!uploadResponse.ok) { const uploadData = await uploadResponse.json() as { error?: string }; setError(uploadData.error ?? `${kind} upload failed.`); }
+      if (!uploadResponse.ok) { const uploadData = await uploadResponse.json() as { error?: string }; uploadError = uploadData.error ?? `${kind} upload failed.`; }
     }
-    await refresh(); setMessage("Campaign saved."); setBusy(false); setEditor(null);
+    setBusy(false); setEditor(null); if (uploadError) setError(uploadError); else setMessage("Campaign saved."); void refresh();
   }
 
   async function remove(campaign: Campaign) {
@@ -77,9 +77,9 @@ function combineDateTime(date: FormDataEntryValue | null, time: FormDataEntryVal
   return dateText ? new Date(`${dateText}T${timeText || "00:00"}`).toISOString() : null;
 }
 
-const timeOptions = Array.from({ length: 96 }, (_, index) => {
-  const hours = Math.floor(index / 4);
-  const minutes = (index % 4) * 15;
+const timeOptions = Array.from({ length: 288 }, (_, index) => {
+  const hours = Math.floor(index / 12);
+  const minutes = (index % 12) * 5;
   const value = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   const hour = hours % 12 || 12;
   return { value, label: `${hour}:${String(minutes).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}` };

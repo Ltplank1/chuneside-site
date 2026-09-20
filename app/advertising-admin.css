@@ -4,6 +4,7 @@
 .ad-form-grid label{display:grid;gap:.35rem;color:#aeb1b8;font-size:.75rem;font-weight:800}
 .ad-datetime-field{display:grid;gap:.35rem;color:#aeb1b8;font-size:.75rem;font-weight:800}.ad-datetime-field>div{display:grid;grid-template-columns:1.2fr .8fr;gap:.55rem}.ad-datetime-field label{font-size:.65rem;color:#858891}.ad-datetime-field label span{font-size:.62rem;text-transform:uppercase}
 .ad-form-grid input,.ad-form-grid select{color:#fff;background:#171920;border-color:#3a3d46}
+.ad-form-grid input[type="date"]{color-scheme:dark}.ad-form-grid input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.95}
 .ad-check{display:flex!important;align-items:center;gap:.5rem;min-height:42px;padding:.55rem .7rem;border:1px solid #3a3d46;background:#171920}
 .ad-check input{width:17px;height:17px;accent-color:var(--primary)}
 @media(max-width:640px){.ad-editor{max-height:calc(100dvh - 1rem);padding:1rem}.ad-form-grid{grid-template-columns:1fr}.ad-form-grid .ad-file{grid-column:auto}}
