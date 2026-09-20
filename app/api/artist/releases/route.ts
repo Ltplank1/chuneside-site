@@ -97,6 +97,8 @@ export async function POST(request: Request) {
       explicitStatus: parsed.data.explicitStatus,
       downloadEligibility: "streaming_only",
       approvalStatus: "pending",
+      publicationStatus: "unpublished",
+      publicationAt: null,
       rightsConfirmed: parsed.data.rightsConfirmed,
       radioReadyConfirmed: false,
       aiDisclosure: parsed.data.aiDisclosure || null,

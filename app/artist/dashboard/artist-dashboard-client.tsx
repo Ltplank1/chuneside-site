@@ -89,6 +89,8 @@ type WorkspaceStagePerformance = {
   genre: string;
   region: string;
   status: "draft" | "submitted" | "pending_review" | "approved" | "scheduled" | "published" | "featured" | "rejected" | "archived";
+  featured: boolean;
+  publishAt: string | null;
   performanceDate: string | null;
   reviewNote: string | null;
 };

@@ -164,7 +164,7 @@ test("exposes protected listening analytics with date filters and song drill-dow
   assert.match(analyticsClient, /Last 7 days/);
   assert.match(analyticsClient, /returningListeners/);
   assert.match(analyticsClient, /analytics-sort/);
-  assert.match(shareRoute, /approvalStatus, "approved"/);
+  assert.match(shareRoute, /publicReleaseCondition/);
 });
 
 test("provides a persistent, curated site content editor with safe publishing controls", async () => {

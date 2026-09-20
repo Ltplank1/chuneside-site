@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { getAdminGate } from "@/app/admin-auth";
 import { getDb } from "@/db";
 import { artistProfiles, releases, stagePerformances, stageTracklistEntries } from "@/db/schema";
@@ -69,6 +69,8 @@ export async function getPublicStagePerformances(limit = 60) {
       region: stagePerformances.region,
       performanceDate: stagePerformances.performanceDate,
       status: stagePerformances.status,
+      featured: stagePerformances.featured,
+      publishAt: stagePerformances.publishAt,
       homePlacement: stagePerformances.homePlacement,
       featureStartAt: stagePerformances.featureStartAt,
       featureEndAt: stagePerformances.featureEndAt,
@@ -81,7 +83,10 @@ export async function getPublicStagePerformances(limit = 60) {
         eq(stagePerformances.artistConsent, true),
         eq(artistProfiles.visibility, "public"),
         isNotNull(stagePerformances.youtubeVideoId),
-        inArray(stagePerformances.status, ["published", "featured"]),
+        or(
+          and(eq(stagePerformances.status, "published"), or(isNull(stagePerformances.publishAt), lte(stagePerformances.publishAt, new Date()))),
+          and(eq(stagePerformances.status, "scheduled"), lte(stagePerformances.publishAt, new Date())),
+        ),
       ))
       .orderBy(desc(stagePerformances.status), asc(stagePerformances.performanceDate), asc(stagePerformances.title))
       .limit(200);
@@ -103,7 +108,7 @@ export async function getPublicStagePerformances(limit = 60) {
       genre: row.genre,
       region: row.region,
       performanceDate: row.performanceDate?.toISOString() ?? null,
-      status: row.status as "published" | "featured",
+      status: row.featured ? "featured" : "published",
       homePlacement: row.homePlacement,
       featureStartAt: row.featureStartAt?.toISOString() ?? null,
       featureEndAt: row.featureEndAt?.toISOString() ?? null,
@@ -152,7 +157,10 @@ export async function recordStagePerformanceView(slug: string) {
         eq(stagePerformances.artistConsent, true),
         eq(artistProfiles.visibility, "public"),
         isNotNull(stagePerformances.youtubeVideoId),
-        inArray(stagePerformances.status, ["published", "featured"]),
+        or(
+          eq(stagePerformances.status, "published"),
+          and(eq(stagePerformances.status, "scheduled"), lte(stagePerformances.publishAt, new Date())),
+        ),
       ))
       .limit(1);
 

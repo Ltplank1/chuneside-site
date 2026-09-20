@@ -39,6 +39,8 @@ export type AdminRelease = {
   explicitStatus: "clean" | "explicit";
   downloadEligibility: "streaming_only" | "free_download" | "paid_download";
   approvalStatus: "draft" | "pending" | "approved" | "rejected" | "disabled";
+  publicationStatus: "unpublished" | "scheduled" | "published" | "archived";
+  publicationAt: string | null;
   rightsConfirmed: boolean;
   aiDisclosure: string | null;
   submissionNotes: string | null;

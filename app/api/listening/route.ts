@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getCurrentMemberUser } from "@/app/member-auth";
 import { getDb } from "@/db";
 import { artistProfiles, listeningEvents, releases } from "@/db/schema";
+import { publicReleaseCondition } from "@/lib/release-visibility";
 import { qualifiesListening, rapidRepeatBlocked } from "@/lib/listening-policy";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
   const [release] = await db.select({ id: releases.id, durationSeconds: releases.durationSeconds })
     .from(releases)
     .innerJoin(artistProfiles, eq(releases.artistProfileId, artistProfiles.id))
-    .where(and(eq(releases.id, parsed.data.releaseId), eq(releases.approvalStatus, "approved"), eq(artistProfiles.visibility, "public")))
+    .where(and(eq(releases.id, parsed.data.releaseId), publicReleaseCondition(), eq(artistProfiles.visibility, "public")))
     .limit(1);
   if (!release) return NextResponse.json({ error: "That release is not available for listening analytics." }, { status: 404 });
 

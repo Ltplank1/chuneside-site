@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getCurrentMemberUser } from "@/app/member-auth";
 import { getDb } from "@/db";
 import { artistProfiles, releases, shareEvents } from "@/db/schema";
+import { publicReleaseCondition } from "@/lib/release-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
   const member = await getCurrentMemberUser();
   const [release] = await getDb().select({ id: releases.id }).from(releases)
     .innerJoin(artistProfiles, eq(releases.artistProfileId, artistProfiles.id))
-    .where(and(eq(releases.id, parsed.data.releaseId), eq(releases.approvalStatus, "approved"), eq(artistProfiles.visibility, "public")))
+    .where(and(eq(releases.id, parsed.data.releaseId), publicReleaseCondition(), eq(artistProfiles.visibility, "public")))
     .limit(1);
   if (!release) return NextResponse.json({ error: "That release is not available for share analytics." }, { status: 404 });
   const listenerType = member ? "member" : "guest";

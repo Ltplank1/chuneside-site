@@ -17,6 +17,7 @@ import { releaseReviewBlockers } from "@/lib/release-policy";
 export const dynamic = "force-dynamic";
 
 const optionalUrl = z.union([z.literal(""), z.string().url().max(500)]).transform((value) => value || null);
+const optionalDate = z.union([z.literal(""), z.string().datetime(), z.string().regex(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/)]).transform((value) => value ? new Date(value) : null);
 const slugField = z.string().min(1).max(80).transform((value) =>
   value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
 );
@@ -60,6 +61,8 @@ const releaseInput = z.object({
   explicitStatus: z.enum(["clean", "explicit"]),
   downloadEligibility: z.enum(["streaming_only", "free_download", "paid_download"]),
   approvalStatus: z.enum(["draft", "pending", "approved", "rejected", "disabled"]),
+  publicationStatus: z.enum(["unpublished", "scheduled", "published", "archived"]).optional(),
+  publicationAt: optionalDate.optional(),
   featured: z.boolean(),
   artistCredits: z.array(z.object({ artistProfileId: z.string().min(1), role: z.enum(["featured", "co_artist"]) })).max(50).default([]),
   additionalCredits: z.array(z.object({ role: z.string().trim().min(1).max(80), contributorName: z.string().trim().min(1).max(160), artistProfileId: z.string().min(1).nullable().optional() })).max(100).default([]),
@@ -171,6 +174,8 @@ export async function POST(request: Request) {
       explicitStatus: input.explicitStatus,
       downloadEligibility: input.downloadEligibility,
       approvalStatus: input.approvalStatus,
+      publicationStatus: input.publicationStatus ?? (input.approvalStatus === "approved" ? "published" : "unpublished"),
+      publicationAt: input.publicationAt ?? null,
       featured: input.featured,
       updatedAt: now,
     };

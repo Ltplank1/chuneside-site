@@ -89,7 +89,7 @@ export default async function ArtistDashboardPage({ searchParams }: { searchPara
       mediaUploadsAvailable={mediaUploadsAvailable}
       stageSubmissionsAvailable={stageSubmissionsAvailable}
       initialMedia={mediaRows.filter((media) => media.status !== "deleted").map((media) => ({ ...media, createdAt: media.createdAt.toISOString(), updatedAt: media.updatedAt.toISOString() }))}
-      initialStagePerformances={stageRows.map((performance) => ({ ...performance, performanceDate: performance.performanceDate?.toISOString() ?? null, createdAt: performance.createdAt.toISOString(), updatedAt: performance.updatedAt.toISOString(), reviewNote: stageReviewNotes.get(performance.id) ?? null }))}
+      initialStagePerformances={stageRows.map((performance) => ({ ...performance, performanceDate: performance.performanceDate?.toISOString() ?? null, publishAt: performance.publishAt?.toISOString() ?? null, createdAt: performance.createdAt.toISOString(), updatedAt: performance.updatedAt.toISOString(), reviewNote: performance.reviewNote ?? stageReviewNotes.get(performance.id) ?? null }))}
       initialReleases={releaseRows.map((release) => ({
         ...release,
         artistCredits: artistCreditsByRelease.get(release.id) ?? [],

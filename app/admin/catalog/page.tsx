@@ -57,7 +57,7 @@ export default async function CatalogPage() {
       adminAccessSource={gate.source}
       ownerAccounts={ownerAccounts as Array<{ id: string; displayName: string; email: string; accountRole: "artist" | "studio" | "admin" }>}
       initialArtists={artists.map((artist) => ({ ...artist, createdAt: artist.createdAt.toISOString(), updatedAt: artist.updatedAt.toISOString() }))}
-      initialReleases={releaseRows.map((release) => ({ ...release, artistCredits: artistCreditsByRelease.get(release.id) ?? [], additionalCredits: additionalCreditsByRelease.get(release.id) ?? [], releaseDate: release.releaseDate?.toISOString() ?? null, reviewedAt: release.reviewedAt?.toISOString() ?? null, createdAt: release.createdAt.toISOString(), updatedAt: release.updatedAt.toISOString() }))}
+      initialReleases={releaseRows.map((release) => ({ ...release, artistCredits: artistCreditsByRelease.get(release.id) ?? [], additionalCredits: additionalCreditsByRelease.get(release.id) ?? [], releaseDate: release.releaseDate?.toISOString() ?? null, publicationAt: release.publicationAt?.toISOString() ?? null, reviewedAt: release.reviewedAt?.toISOString() ?? null, createdAt: release.createdAt.toISOString(), updatedAt: release.updatedAt.toISOString() }))}
     />
   );
 }

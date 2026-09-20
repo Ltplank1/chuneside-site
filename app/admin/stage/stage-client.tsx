@@ -32,6 +32,9 @@ type StagePerformance = {
   region: string;
   performanceDate: string | null;
   status: StageStatus;
+  featured: boolean;
+  publishAt: string | null;
+  reviewNote: string | null;
   artistConsent: boolean;
   rightsDeclaration: boolean;
   originalSubmissionInfo: string | null;
@@ -127,6 +130,8 @@ export function StageClient({ adminAccessSource, storageReady, artists, releases
         region: form.get("region"),
         performanceDate: form.get("performanceDate"),
         status: form.get("status"),
+        featured: form.get("featured") === "on",
+        publishAt: form.get("publishAt"),
         artistConsent: form.get("artistConsent") === "on",
         rightsDeclaration: form.get("rightsDeclaration") === "on",
         originalSubmissionInfo: form.get("originalSubmissionInfo"),
@@ -291,13 +296,14 @@ function StageEditor({ editor, artists, releases, busy, error, onClose, onSubmit
             <Field label="Artist or DJ profile"><NativeSelect name="artistProfileId" defaultValue={performance?.artistProfileId ?? artists[0]?.id ?? ""} required>{artists.map((artist) => <NativeSelectOption key={artist.id} value={artist.id}>{artist.stageName}</NativeSelectOption>)}</NativeSelect></Field>
             <Field label="Performance title"><Input name="title" required maxLength={160} defaultValue={performance?.title ?? ""} /></Field>
             <Field label="Slug"><SlugField value={performance?.slug ?? ""} /></Field>
-            <Field label="Status"><Choice name="status" value={performance?.status ?? "draft"} options={["draft", "submitted", "pending_review", "approved", "scheduled", "published", "featured", "rejected", "archived"]} /></Field>
+            <Field label="Status"><Choice name="status" value={performance?.status ?? "draft"} options={["draft", "submitted", "approved", "published", "rejected", "archived", ...(["pending_review", "scheduled", "featured"] as const).filter((status) => performance?.status === status)]} /></Field>
             <Field label="YouTube URL or ID"><Input name="youtubeUrl" maxLength={500} defaultValue={performance?.youtubeUrl ?? performance?.youtubeVideoId ?? ""} /></Field>
             <Field label="Thumbnail URL"><Input name="thumbnailUrl" type="url" defaultValue={performance?.thumbnailUrl ?? ""} /></Field>
             <Field label="Duration minutes"><Input name="durationMinutes" type="number" min={1} max={180} defaultValue={performance?.durationMinutes ?? ""} /></Field>
             <GenreField value={performance?.genre ?? ""} required />
             <CountryRegionField value={performance?.region ?? ""} required />
             <Field label="Performance date"><DateTimeField name="performanceDate" value={performance?.performanceDate} /></Field>
+            <Field label="Publish at"><DateTimeField name="publishAt" value={performance?.publishAt} /></Field>
             <Field label="Home placement"><Choice name="homePlacement" value={performance?.homePlacement ?? "none"} options={["none", "featured", "latest", "trending", "most_watched", "wadadli", "caribbean"]} /></Field>
             <Field label="Fee status"><Choice name="feeStatus" value={performance?.feeStatus ?? "not_required"} options={["not_required", "free_promotion", "discounted", "waived", "pending", "paid"]} /></Field>
             <Field label="Stage fee label"><Input name="stageFeeLabel" maxLength={120} placeholder="Configured later; do not hard-code public prices" defaultValue={performance?.stageFeeLabel ?? ""} /></Field>
@@ -310,6 +316,7 @@ function StageEditor({ editor, artists, releases, busy, error, onClose, onSubmit
             <Field label="Review note" wide><Textarea name="reviewNote" maxLength={1000} placeholder="Required when rejecting: explain what the artist needs to correct." /></Field>
           </div>
           <label className="catalog-check rights-confirmation"><input name="artistConsent" type="checkbox" defaultChecked={performance?.artistConsent ?? false} /><span>Artist consent is confirmed for ChuneSide Stage publication and potential official ChuneSide YouTube use.</span></label>
+          <label className="catalog-check rights-confirmation"><input name="featured" type="checkbox" defaultChecked={performance?.featured ?? performance?.status === "featured"} /><span>Feature this published performance</span></label>
           <label className="catalog-check rights-confirmation"><input name="rightsDeclaration" type="checkbox" defaultChecked={performance?.rightsDeclaration ?? false} /><span>I confirm this performance has the necessary permissions or rights declaration for ChuneSide Stage review and publication.</span></label>
           {error && <p className="catalog-editor-error" role="alert">{error}</p>}
           <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Save />} Save performance</Button></DialogFooter>

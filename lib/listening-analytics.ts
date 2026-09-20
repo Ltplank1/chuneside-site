@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import { artistProfiles, listeningEvents, releases, shareEvents, songLikes } from "@/db/schema";
+import { publicReleaseCondition } from "@/lib/release-visibility";
 
 type ListeningRow = {
   eventId: string;
@@ -64,7 +65,7 @@ function summarize(rows: ListeningRow[], releaseId: string | undefined, metrics:
 }
 
 export async function getListeningAnalytics({ from, to, releaseId }: { from: Date; to: Date; releaseId?: string }) {
-  const conditions = [gte(listeningEvents.startedAt, from), lte(listeningEvents.startedAt, to), eq(releases.approvalStatus, "approved"), eq(artistProfiles.visibility, "public")];
+  const conditions = [gte(listeningEvents.startedAt, from), lte(listeningEvents.startedAt, to), publicReleaseCondition(), eq(artistProfiles.visibility, "public")];
   if (releaseId) conditions.push(eq(listeningEvents.releaseId, releaseId));
   const rows = await getDb().select({
     eventId: listeningEvents.id, releaseId: listeningEvents.releaseId, artistProfileId: artistProfiles.id, artistName: artistProfiles.stageName,

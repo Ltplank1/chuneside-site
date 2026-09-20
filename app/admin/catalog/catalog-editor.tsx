@@ -82,6 +82,8 @@ export function CatalogEditor({ editor, artists, ownerAccounts, onClose, onSaved
           explicitStatus: form.get("explicitStatus"),
           downloadEligibility: form.get("downloadEligibility"),
           approvalStatus: form.get("approvalStatus"),
+          publicationStatus: form.get("publicationStatus"),
+          publicationAt: form.get("publicationAt"),
           featured: form.get("featured") === "on",
           artistCredits,
           additionalCredits,
@@ -185,6 +187,8 @@ function ReleaseFields({ release, artists, artistCredits, setArtistCredits, addi
       <Field label="Content label"><Choice name="explicitStatus" value={release?.explicitStatus ?? "clean"} options={["clean", "explicit"]} /></Field>
       <Field label="Downloads"><Choice name="downloadEligibility" value={release?.downloadEligibility ?? "streaming_only"} options={[["streaming_only", "Streaming only"], ["free_download", "Free download"], ["paid_download", "Paid download"]]} /></Field>
       <Field label="Approval"><Choice name="approvalStatus" value={release?.approvalStatus ?? "draft"} options={["draft", "pending", "approved", "rejected", "disabled"]} /></Field>
+      <Field label="Publication"><Choice name="publicationStatus" value={release?.publicationStatus ?? (release?.approvalStatus === "approved" ? "published" : "unpublished")} options={["unpublished", "scheduled", "published", "archived"]} /></Field>
+      <Field label="Publish at"><Input name="publicationAt" type="datetime-local" defaultValue={release?.publicationAt ? new Date(release.publicationAt).toISOString().slice(0, 16) : ""} /></Field>
       <label className="catalog-check"><input name="featured" type="checkbox" defaultChecked={release?.featured ?? false} /><span>Featured release</span></label>
     </div>
   );

@@ -18,6 +18,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     privateOnly: releaseMedia.privateOnly,
     status: releaseMedia.status,
     releaseStatus: releases.approvalStatus,
+    publicationStatus: releases.publicationStatus,
     ownerMemberId: artistProfiles.ownerMemberId,
   }).from(releaseMedia)
     .innerJoin(releases, eq(releaseMedia.releaseId, releases.id))
@@ -26,7 +27,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
   if (!media || media.status === "deleted") return NextResponse.json({ error: "Media not found." }, { status: 404 });
 
-  const publiclyAvailable = media.status === "ready" && media.releaseStatus === "approved";
+  const publiclyAvailable = media.status === "ready" && media.releaseStatus === "approved" && media.publicationStatus === "published";
   if (!publiclyAvailable) {
     const user = await getCurrentMemberUser();
     const ownsMedia = Boolean(user && user.id === media.ownerMemberId);

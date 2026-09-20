@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { artistProfiles, releases } from "@/db/schema";
 import { isFeatureAvailable } from "@/lib/feature-flags";
 import { demoTracks, formatTrackDuration, type PublicTrack } from "@/lib/public-catalog";
+import { publicReleaseCondition } from "@/lib/release-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export async function GET() {
     }).from(releases)
       .innerJoin(artistProfiles, eq(releases.artistProfileId, artistProfiles.id))
       .where(and(
-        eq(releases.approvalStatus, "approved"),
+        publicReleaseCondition(),
         eq(artistProfiles.visibility, "public"),
         isNotNull(releases.legacyTrackId),
       ))

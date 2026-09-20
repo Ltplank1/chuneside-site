@@ -70,6 +70,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ re
       aiDisclosure: parsed.data.aiDisclosure || null,
       submissionNotes: parsed.data.submissionNotes || null,
       approvalStatus: "pending",
+      publicationStatus: "unpublished",
+      publicationAt: null,
       reviewNote: null,
       reviewedAt: null,
       reviewedBy: null,

@@ -1,11 +1,12 @@
 import { cache } from "react";
-import { and, asc, eq, inArray, isNotNull, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
 import { getAdminGate } from "@/app/admin-auth";
 import { getDb } from "@/db";
 import { artistProfiles, releaseArtistCredits, releases, stagePerformances } from "@/db/schema";
 import { baselineArtists } from "@/lib/catalog-seed";
 import { demoTracks, formatTrackDuration, type PublicTrack } from "@/lib/public-catalog";
 import { isFeatureAvailable } from "@/lib/feature-flags";
+import { publicReleaseCondition } from "@/lib/release-visibility";
 
 export type PublicArtistProfile = {
   slug: string;
@@ -99,7 +100,7 @@ export const getPublicArtistProfile = cache(async (slug: string): Promise<Public
       : eq(releases.artistProfileId, artist.id);
     const releaseRows = await db.select().from(releases).where(and(
       releaseVisibility,
-      eq(releases.approvalStatus, "approved"),
+      publicReleaseCondition(),
       isNotNull(releases.legacyTrackId),
     )).orderBy(asc(releases.releaseDate), asc(releases.title));
 
@@ -114,7 +115,10 @@ export const getPublicArtistProfile = cache(async (slug: string): Promise<Public
           eq(stagePerformances.artistProfileId, artist.id),
           eq(stagePerformances.artistConsent, true),
           isNotNull(stagePerformances.youtubeVideoId),
-          inArray(stagePerformances.status, ["published", "featured"]),
+          or(
+            and(eq(stagePerformances.status, "published"), or(isNull(stagePerformances.publishAt), lte(stagePerformances.publishAt, new Date()))),
+            and(eq(stagePerformances.status, "scheduled"), lte(stagePerformances.publishAt, new Date())),
+          ),
         )).orderBy(asc(stagePerformances.performanceDate), asc(stagePerformances.title));
         publicStageRows = publicStageRows.filter((performance) => performance.performanceType === "dj" ? djStageAvailable : artistStageAvailable);
       } catch {
@@ -165,7 +169,7 @@ export const getPublicArtistProfile = cache(async (slug: string): Promise<Public
         genre: performance.genre,
         region: performance.region,
         performanceDate: performance.performanceDate?.toISOString() ?? null,
-        status: performance.status as "published" | "featured",
+        status: performance.featured ? "featured" : "published",
         homePlacement: performance.homePlacement,
         viewCount: performance.viewCount,
         favoriteCount: performance.favoriteCount,

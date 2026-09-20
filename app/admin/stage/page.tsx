@@ -52,6 +52,7 @@ export default async function AdminStagePage() {
       initialPerformances={performances.map((item) => ({
         ...item,
         performanceDate: item.performanceDate?.toISOString() ?? null,
+        publishAt: item.publishAt?.toISOString() ?? null,
         featureStartAt: item.featureStartAt?.toISOString() ?? null,
         featureEndAt: item.featureEndAt?.toISOString() ?? null,
         createdAt: item.createdAt.toISOString(),
