@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { type CSSProperties, FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Megaphone, Pencil, Plus, Save, Trash2 } from "lucide-react";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-type Campaign = { id: string; name: string; sponsorName: string; status: "draft" | "active" | "paused"; manualOverride: "auto" | "on" | "off"; startAt: string | null; endAt: string | null; rotationWeight: number; position: "corner" | "center"; mobileMode: "bottom" | "top" | "hidden"; maxWidth: number; frequencyCapCount: number; frequencyCapWindowSeconds: number; sessionCapCount: number; clickUrl: string | null; dismissible: boolean; videoObjectKey: string | null; posterObjectKey: string | null; stats: Record<string, number> };
+type Campaign = { id: string; name: string; sponsorName: string; status: "draft" | "active" | "paused"; manualOverride: "auto" | "on" | "off"; startAt: string | null; endAt: string | null; rotationWeight: number; position: "corner" | "center"; mobileMode: "bottom" | "top" | "hidden"; maxWidth: number; frequencyCapCount: number; frequencyCapWindowSeconds: number; sessionCapCount: number; clickUrl: string | null; dismissible: boolean; videoObjectKey: string | null; posterObjectKey: string | null; stats: Record<string, number>; diagnostics: string[] };
 type Editor = Campaign | "new" | null;
 
 export function AdvertisingClient({ adminAccessSource }: { adminAccessSource: "allowlist" | "role" }) {
@@ -19,13 +19,15 @@ export function AdvertisingClient({ adminAccessSource }: { adminAccessSource: "a
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [advertisingOn, setAdvertisingOn] = useState(false);
 
   async function refresh() {
     const response = await fetch("/api/admin/advertising", { cache: "no-store" });
-    const data = await response.json() as { campaigns?: Campaign[]; totals?: Record<string, number> };
-    setCampaigns(data.campaigns ?? []); setTotals(data.totals ?? {});
+    const data = await response.json() as { campaigns?: Campaign[]; totals?: Record<string, number>; advertisingOn?: boolean };
+    setCampaigns(data.campaigns ?? []); setTotals(data.totals ?? {}); setAdvertisingOn(Boolean(data.advertisingOn));
   }
   useEffect(() => { const timer = window.setTimeout(() => void refresh(), 0); return () => window.clearTimeout(timer); }, []);
+  function openEditor(next: Editor) { setEditor(next); }
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(""); setMessage("");
@@ -53,20 +55,46 @@ export function AdvertisingClient({ adminAccessSource }: { adminAccessSource: "a
 
   async function setOverride(campaign: Campaign, mode: "auto" | "on" | "off") {
     const response = await fetch("/api/admin/advertising", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "override", id: campaign.id, mode }) });
-    if (!response.ok) { setError("Campaign override could not be updated."); return; }
+    if (!response.ok) { const data = await response.json().catch(() => null) as { error?: string } | null; setError(data?.error ?? "Campaign override could not be updated."); return; }
     setMessage(mode === "on" ? "Campaign started now." : mode === "off" ? "Campaign stopped." : "Campaign returned to its schedule.");
     await refresh();
   }
 
   return <main className="admin-shell advertising-admin">
     <header className="admin-hero"><Link href="/" className="admin-brand" aria-label="Back to ChuneSide"><Image src="/chuneside-logo-v2.png" alt="ChuneSide" width={420} height={184} priority unoptimized /></Link><div><span><Megaphone /> Admin foundation</span><h1>FLOATING ADS</h1><p>Manage tasteful, muted-by-default sponsor video campaigns without touching music playback or rankings.</p><small className="admin-access-source">Access granted by {adminAccessSource === "allowlist" ? "owner email allowlist" : "database admin role"}.</small></div></header>
-    <nav className="admin-toolbar admin-nav-actions" aria-label="Admin sections"><Button asChild variant="outline"><Link href="/admin/feature-flags">Feature Control</Link></Button><Button asChild variant="outline"><Link href="/admin/analytics">Analytics</Link></Button><Button asChild variant="outline"><Link href="/admin/announcements">News Bar</Link></Button><Button asChild variant="outline"><Link href="/admin/site-content">Site Content</Link></Button><Button onClick={() => setEditor("new")}><Plus /> Campaign</Button></nav>
+    <nav className="admin-toolbar admin-nav-actions" aria-label="Admin sections"><Button asChild variant="outline"><Link href="/admin/feature-flags">Feature Control</Link></Button><Button asChild variant="outline"><Link href="/admin/analytics">Analytics</Link></Button><Button asChild variant="outline"><Link href="/admin/announcements">News Bar</Link></Button><Button asChild variant="outline"><Link href="/admin/site-content">Site Content</Link></Button><Button onClick={() => openEditor("new")}><Plus /> Campaign</Button></nav>
     <section className="admin-summary" aria-label="Advertising totals"><div><strong>{campaigns.length}</strong><span>Campaigns</span></div><div><strong>{totals.impression ?? 0}</strong><span>Impressions</span></div><div><strong>{totals.complete ?? 0}</strong><span>Completes</span></div><div><strong>{totals.click ?? 0}</strong><span>Clicks</span></div></section>
-    {message && <p className="admin-message" role="status">{message}</p>}{error && <p className="catalog-editor-error" role="alert">{error}</p>}
+    {message && <p className="admin-message" role="status">{message}</p>}{error && <p className="catalog-editor-error" role="alert">{error}</p>}{!advertisingOn && <p className="ad-diagnostics-banner" role="status">Public advertising is off in Feature Control. Admin preview remains available.</p>}
     <section className="ad-policy"><strong>Music wins</strong><p>Ads load lazily, start muted, fade in and out, and never pause, restart, seek, or change the music player. ChuneSide breaks, paid placements, and listening/ranking events remain separate.</p></section>
     <section className="advertising-list">{campaigns.map((campaign) => <article key={campaign.id} className="advertising-row"><span className={`ad-status ${campaign.status}`}>{campaign.manualOverride === "on" ? "live now" : campaign.manualOverride === "off" ? "stopped" : campaign.status}</span><div><h2>{campaign.name}</h2><p>{campaign.sponsorName} · {campaign.position} · weight {campaign.rotationWeight}</p><small>{campaign.stats.impression ?? 0} impressions · {campaign.stats.complete ?? 0} completes · {campaign.stats.click ?? 0} clicks</small></div><div className="ad-row-actions"><Button variant="outline" size="sm" onClick={() => void setOverride(campaign, "on")} disabled={campaign.manualOverride === "on"}>Start now</Button><Button variant="outline" size="sm" onClick={() => void setOverride(campaign, "auto")} disabled={campaign.manualOverride === "auto"}>Use schedule</Button><Button variant="outline" size="sm" onClick={() => void setOverride(campaign, "off")} disabled={campaign.manualOverride === "off"}>Stop</Button></div><Button variant="ghost" size="icon" onClick={() => setEditor(campaign)} aria-label={`Edit ${campaign.name}`}><Pencil /></Button><Button variant="ghost" size="icon" onClick={() => void remove(campaign)} aria-label={`Delete ${campaign.name}`}><Trash2 /></Button></article>)}{!campaigns.length && <div className="admin-empty"><Megaphone /><h2>No campaigns yet</h2><p>Create a draft, upload its video, then enable Advertising from Feature Control when you are ready.</p></div>}</section>
     <Dialog open={editor !== null} onOpenChange={(open) => !open && setEditor(null)}><DialogContent className="ad-editor"><DialogHeader><DialogTitle>{editor === "new" ? "New ad campaign" : "Edit ad campaign"}</DialogTitle><DialogDescription>Use a short, lightweight video and a poster image. Campaigns stay private until active and the global Advertising flag is on.</DialogDescription></DialogHeader><form onSubmit={save}><div className="ad-form-grid"><label>Name<Input name="name" defaultValue={editor && typeof editor === "object" ? editor.name : ""} required /></label><label>Sponsor<Input name="sponsorName" defaultValue={editor && typeof editor === "object" ? editor.sponsorName : ""} required /></label><label>Status<NativeSelect name="status" defaultValue={editor && typeof editor === "object" ? editor.status : "draft"}><NativeSelectOption value="draft">Draft</NativeSelectOption><NativeSelectOption value="active">Active</NativeSelectOption><NativeSelectOption value="paused">Paused</NativeSelectOption></NativeSelect></label><label>Position<NativeSelect name="position" defaultValue={editor && typeof editor === "object" ? editor.position : "corner"}><NativeSelectOption value="corner">Corner</NativeSelectOption><NativeSelectOption value="center">Center</NativeSelectOption></NativeSelect></label><label>Mobile<NativeSelect name="mobileMode" defaultValue={editor && typeof editor === "object" ? editor.mobileMode : "bottom"}><NativeSelectOption value="bottom">Bottom</NativeSelectOption><NativeSelectOption value="top">Top</NativeSelectOption><NativeSelectOption value="hidden">Hide on mobile</NativeSelectOption></NativeSelect></label><label>Rotation weight<Input name="rotationWeight" type="number" min="1" max="100" defaultValue={editor && typeof editor === "object" ? editor.rotationWeight : 1} /></label><label>Max width (px)<Input name="maxWidth" type="number" min="280" max="720" defaultValue={editor && typeof editor === "object" ? editor.maxWidth : 420} /></label><label>Frequency cap<Input name="frequencyCapCount" type="number" min="1" max="20" defaultValue={editor && typeof editor === "object" ? editor.frequencyCapCount : 1} /></label><label>Cap window (seconds)<Input name="frequencyCapWindowSeconds" type="number" min="300" defaultValue={editor && typeof editor === "object" ? editor.frequencyCapWindowSeconds : 86400} /></label><label>Session cap<Input name="sessionCapCount" type="number" min="1" max="5" defaultValue={editor && typeof editor === "object" ? editor.sessionCapCount : 1} /></label><label>Click URL<Input name="clickUrl" type="url" defaultValue={editor && typeof editor === "object" ? editor.clickUrl ?? "" : ""} placeholder="https://example.com" /></label><DateTimeFields label="Starts" prefix="start" value={editor && typeof editor === "object" ? editor.startAt : null} /><DateTimeFields label="Ends" prefix="end" value={editor && typeof editor === "object" ? editor.endAt : null} /><label className="ad-file">Video (.mp4/.webm)<Input name="video" type="file" accept="video/mp4,video/webm,video/quicktime" /></label><label className="ad-file">Poster image<Input name="poster" type="file" accept="image/jpeg,image/png,image/webp" /></label><label className="ad-check"><input name="dismissible" type="checkbox" defaultChecked={editor && typeof editor === "object" ? editor.dismissible : true} /> Allow close button</label></div><DialogFooter><Button type="button" variant="outline" onClick={() => setEditor(null)}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Saving…" : <><Save /> Save campaign</>}</Button></DialogFooter></form></DialogContent></Dialog>
+    {campaigns.length > 0 && <section className="ad-diagnostics-panel" aria-label="Ad delivery diagnostics"><h2>Delivery diagnostics</h2>{campaigns.map((campaign) => <p key={campaign.id}><strong>{campaign.name}</strong><span>{campaign.diagnostics.join(" · ")}</span></p>)}</section>}
+    {editor && <AdminAdPreview campaign={editor === "new" ? null : editor} />}
   </main>;
+}
+
+function AdminAdPreview({ campaign }: { campaign: Campaign | null }) {
+  const [localVideo, setLocalVideo] = useState<string | null>(null);
+  const [localPoster, setLocalPoster] = useState<string | null>(null);
+  useEffect(() => {
+    const videoInput = document.querySelector<HTMLInputElement>('input[name="video"]');
+    const posterInput = document.querySelector<HTMLInputElement>('input[name="poster"]');
+    const urls: string[] = [];
+    const update = () => {
+      const video = videoInput?.files?.[0];
+      const poster = posterInput?.files?.[0];
+      const nextVideo = video?.size ? URL.createObjectURL(video) : null;
+      const nextPoster = poster?.size ? URL.createObjectURL(poster) : null;
+      if (nextVideo) urls.push(nextVideo);
+      if (nextPoster) urls.push(nextPoster);
+      setLocalVideo(nextVideo); setLocalPoster(nextPoster);
+    };
+    videoInput?.addEventListener("change", update); posterInput?.addEventListener("change", update);
+    return () => { videoInput?.removeEventListener("change", update); posterInput?.removeEventListener("change", update); for (const url of urls) URL.revokeObjectURL(url); };
+  }, [campaign?.id]);
+  const videoUrl = localVideo ?? (campaign?.videoObjectKey ? `/api/ads/media/${campaign.id}/video?adminPreview=1` : null);
+  const posterUrl = localPoster ?? (campaign?.posterObjectKey ? `/api/ads/media/${campaign.id}/poster?adminPreview=1` : null);
+  return <section className={`ad-preview ad-preview-${campaign?.position ?? "corner"}`} aria-label="Admin ad preview" style={{ "--ad-preview-width": `${campaign?.maxWidth ?? 420}px` } as CSSProperties}><div className="ad-preview-heading"><strong>Admin preview</strong><span>{campaign?.position ?? "corner"} · {campaign?.maxWidth ?? 420}px max</span></div>{videoUrl ? <video src={videoUrl} poster={posterUrl ?? undefined} controls muted playsInline preload="metadata" /> : <p>Upload a video to preview this campaign.</p>}<small>Preview only. It does not create a public impression or run the public player.</small></section>;
 }
 
 async function uploadCampaignMedia(campaignId: string, files: readonly [string, FormDataEntryValue | null][], onFinished: (error: string | null) => void) {

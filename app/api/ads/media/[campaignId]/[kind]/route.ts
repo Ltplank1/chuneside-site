@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { adCampaigns } from "@/db/schema";
+import { requireAdminUser } from "@/app/admin-auth";
 import { getMediaBucket } from "@/lib/media-storage";
 import { parseByteRange } from "@/lib/media-policy";
 
@@ -10,7 +11,10 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request, context: { params: Promise<{ campaignId: string; kind: string }> }) {
   const { campaignId, kind } = await context.params;
   if (kind !== "video" && kind !== "poster") return NextResponse.json({ error: "Media not found." }, { status: 404 });
-  const [campaign] = await getDb().select().from(adCampaigns).where(and(eq(adCampaigns.id, campaignId), eq(adCampaigns.status, "active"))).limit(1);
+  const adminPreview = new URL(request.url).searchParams.get("adminPreview") === "1";
+  if (adminPreview && !await requireAdminUser()) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
+  const conditions = adminPreview ? eq(adCampaigns.id, campaignId) : and(eq(adCampaigns.id, campaignId), eq(adCampaigns.status, "active"));
+  const [campaign] = await getDb().select().from(adCampaigns).where(conditions).limit(1);
   if (!campaign) return NextResponse.json({ error: "Media not found." }, { status: 404 });
   const objectKey = kind === "video" ? campaign.videoObjectKey : campaign.posterObjectKey;
   const contentType = kind === "video" ? campaign.videoContentType : campaign.posterContentType;

@@ -4,6 +4,7 @@ import { getCurrentMemberUser } from "@/app/member-auth";
 import { getDb } from "@/db";
 import { adCampaigns, adEvents } from "@/db/schema";
 import { isFeatureAvailable } from "@/lib/feature-flags";
+import { hasAdFreeEntitlement } from "@/lib/ad-entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
   const session = request.headers.get("x-chuneside-ad-session")?.slice(0, 160);
   if (!visitor || !session) return NextResponse.json({ campaign: null }, { headers: { "cache-control": "private, max-age=15" } });
   const member = await getCurrentMemberUser();
+  if (hasAdFreeEntitlement(member)) return NextResponse.json({ campaign: null }, { headers: { "cache-control": "private, max-age=60" } });
   const visitorHash = await hash(member ? `member:${member.id}` : `guest:${visitor}`);
   const sessionHash = await hash(`${member?.id ?? visitor}:${session}`);
   const now = new Date();

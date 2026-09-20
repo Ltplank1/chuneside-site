@@ -423,10 +423,15 @@ test("keeps floating advertising isolated from music playback and rankings", asy
   assert.match(events, /eventType/);
   assert.match(component, /videoRef\.current\.muted = true/);
   assert.match(component, /preload="none"/);
+  assert.match(admin, /aria-label="Admin ad preview"/);
+  assert.match(admin, /adminPreview=1/);
   assert.match(player, /<FloatingVideoAd enabled=\{featureOn\("advertising"/);
   assert.match(styles, /floating-video-ad-exiting/);
+  assert.match(styles, /aspect-ratio:16\/9/);
   assert.match(admin, /Save campaign/);
   assert.match(admin, /Video \(\.mp4\/\.webm\)/);
+  assert.match(admin, /Delivery diagnostics/);
+  assert.match(eligible, /manualOverride/);
 });
 
 test("classifies AI releases for configurable upload limits", async () => {
