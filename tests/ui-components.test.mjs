@@ -386,6 +386,21 @@ test("extends the existing News Bar with scheduled motion, safe styling, preview
   assert.match(css, /news-position-bottom/);
 });
 
+test("keeps media on demand and public reads bounded by browser caching", async () => {
+  const [home, artistList, catalogRoute, announcementsRoute, policy] = await Promise.all([
+    readFile(path.join(root, "app", "page.tsx"), "utf8"),
+    readFile(path.join(root, "app", "artists", "[slug]", "artist-release-list.tsx"), "utf8"),
+    readFile(path.join(root, "app", "api", "catalog", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "api", "announcements", "route.ts"), "utf8"),
+    readFile(path.join(root, "PERFORMANCE.md"), "utf8"),
+  ]);
+  assert.match(home, /preload="none"/);
+  assert.match(artistList, /preload="none"/);
+  assert.match(catalogRoute, /stale-while-revalidate=60/);
+  assert.match(announcementsRoute, /private, max-age=30/);
+  assert.match(policy, /Load audio on demand/);
+});
+
 test("classifies AI releases for configurable upload limits", async () => {
   const {
     classificationQualifiesForRestriction,

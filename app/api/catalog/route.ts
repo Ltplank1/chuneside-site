@@ -8,6 +8,10 @@ import { demoTracks, formatTrackDuration, type PublicTrack } from "@/lib/public-
 
 export const dynamic = "force-dynamic";
 
+const catalogResponse = (body: unknown) => NextResponse.json(body, {
+  headers: { "cache-control": "private, max-age=30, stale-while-revalidate=60" },
+});
+
 export async function GET() {
   try {
     const db = getDb();
@@ -15,7 +19,7 @@ export async function GET() {
     const audience = gate.status === "allowed" ? "admin" : "public";
 
     if (!await isFeatureAvailable(db, "database_catalogue", audience)) {
-      return NextResponse.json({ tracks: demoTracks, source: "demo" });
+      return catalogResponse({ tracks: demoTracks, source: "demo" });
     }
 
     const rows = await db.select({
@@ -45,7 +49,7 @@ export async function GET() {
       .orderBy(asc(releases.legacyTrackId))
       .limit(100);
 
-    if (!rows.length) return NextResponse.json({ tracks: [], source: "database" });
+    if (!rows.length) return catalogResponse({ tracks: [], source: "database" });
 
     const tracks: PublicTrack[] = rows.map((row) => ({
       id: row.id as number,
@@ -69,8 +73,8 @@ export async function GET() {
       fans: 0,
     }));
 
-    return NextResponse.json({ tracks, source: "database" });
+    return catalogResponse({ tracks, source: "database" });
   } catch {
-    return NextResponse.json({ tracks: demoTracks, source: "demo" });
+    return catalogResponse({ tracks: demoTracks, source: "demo" });
   }
 }

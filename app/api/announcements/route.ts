@@ -7,6 +7,10 @@ import { isFeatureAvailable } from "@/lib/feature-flags";
 
 export const dynamic = "force-dynamic";
 
+const announcementsResponse = (body: unknown) => NextResponse.json(body, {
+  headers: { "cache-control": "private, max-age=30, stale-while-revalidate=60" },
+});
+
 export async function GET() {
   try {
     const db = getDb();
@@ -14,7 +18,7 @@ export async function GET() {
     const audience = gate.status === "allowed" ? "admin" : "public";
 
     if (!await isFeatureAvailable(db, "community_news_bar", audience)) {
-      return NextResponse.json({ announcements: [], source: "off" });
+      return announcementsResponse({ announcements: [], source: "off" });
     }
 
     const now = new Date();
@@ -47,8 +51,8 @@ export async function GET() {
       or(isNull(communityAnnouncements.endAt), gte(communityAnnouncements.endAt, now)),
     )).orderBy(asc(communityAnnouncements.sortOrder), asc(communityAnnouncements.createdAt)).limit(12);
 
-    return NextResponse.json({ announcements: rows, source: "database" });
+    return announcementsResponse({ announcements: rows, source: "database" });
   } catch {
-    return NextResponse.json({ announcements: [], source: "error" });
+    return announcementsResponse({ announcements: [], source: "error" });
   }
 }

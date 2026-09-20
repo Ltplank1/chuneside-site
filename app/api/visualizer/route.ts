@@ -6,11 +6,15 @@ import { defaultVisualizerSettings, normalizeVisualizerSettings } from "@/lib/vi
 
 export const dynamic = "force-dynamic";
 
+const visualizerResponse = (body: unknown) => NextResponse.json(body, {
+  headers: { "cache-control": "private, max-age=30, stale-while-revalidate=60" },
+});
+
 export async function GET() {
   try {
     const [row] = await getDb().select().from(visualizerSettings).where(eq(visualizerSettings.id, "global")).limit(1);
     const allowedThemes = row ? JSON.parse(row.allowedThemesJson) as string[] : defaultVisualizerSettings.allowedThemes;
-    return NextResponse.json(normalizeVisualizerSettings({
+    return visualizerResponse(normalizeVisualizerSettings({
       id: "global",
       enabled: row?.enabled,
       defaultTheme: row?.defaultTheme,
@@ -19,6 +23,6 @@ export async function GET() {
       updatedBy: null,
     }));
   } catch {
-    return NextResponse.json(defaultVisualizerSettings);
+    return visualizerResponse(defaultVisualizerSettings);
   }
 }

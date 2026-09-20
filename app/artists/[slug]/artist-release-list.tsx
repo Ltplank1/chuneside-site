@@ -57,6 +57,6 @@ export function ArtistReleaseList({ releases }: { releases: PublicTrack[] }) {
         </div>
       )}
     </div>
-    <audio ref={audioRef} src={activeRelease?.audioUrl ?? undefined} onEnded={() => setPlaying(false)} onError={() => setPlaying(false)} preload="metadata" />
+    <audio ref={audioRef} src={activeRelease?.audioUrl ?? undefined} onEnded={() => setPlaying(false)} onError={() => setPlaying(false)} preload="none" />
   </>;
 }
