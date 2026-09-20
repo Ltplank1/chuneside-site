@@ -4,7 +4,7 @@ import Link from "next/link";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { BriefcaseBusiness } from "lucide-react";
 import { getDb } from "@/db";
-import { adminAuditLogs, artistProfiles, releaseMedia, releases, stagePerformances } from "@/db/schema";
+import { adminAuditLogs, artistProfiles, members, releaseArtistCredits, releaseCredits, releaseMedia, releases, stagePerformances } from "@/db/schema";
 import { getAiLimitPolicy } from "@/lib/ai-upload-policy";
 import { getArtistWorkspaceAccess } from "@/lib/artist-access";
 import { appSignInPath } from "@/app/auth/paths";
@@ -38,16 +38,23 @@ export default async function ArtistDashboardPage({ searchParams }: { searchPara
 
   const db = getDb();
   const profiles = await db.select().from(artistProfiles).where(eq(artistProfiles.ownerMemberId, access.user.id)).orderBy(asc(artistProfiles.stageName));
+  const studioMembers = await db.select({ id: members.id, displayName: members.displayName }).from(members).where(and(eq(members.accountRole, "studio"), eq(members.accountStatus, "active"))).orderBy(asc(members.displayName));
   const releaseRows = profiles.length
     ? await db.select().from(releases).where(inArray(releases.artistProfileId, profiles.map((profile) => profile.id))).orderBy(asc(releases.createdAt))
     : [];
-  const [mediaRows, mediaUploadsAvailable, stageSubmissionsAvailable] = await Promise.all([
+  const [mediaRows, mediaUploadsAvailable, stageSubmissionsAvailable, artistCreditRows, additionalCreditRows] = await Promise.all([
     releaseRows.length
       ? db.select().from(releaseMedia).where(inArray(releaseMedia.releaseId, releaseRows.map((release) => release.id))).orderBy(asc(releaseMedia.createdAt))
       : [],
     isFeatureAvailable(db, "artist_media_uploads", access.account.accountRole === "admin" ? "admin" : "public"),
     isFeatureAvailable(db, "chuneside_stage", access.account.accountRole === "admin" ? "admin" : "public"),
+    releaseRows.length ? db.select().from(releaseArtistCredits).where(inArray(releaseArtistCredits.releaseId, releaseRows.map((release) => release.id))) : [],
+    releaseRows.length ? db.select().from(releaseCredits).where(inArray(releaseCredits.releaseId, releaseRows.map((release) => release.id))) : [],
   ]);
+  const artistCreditsByRelease = new Map<string, Array<{ artistProfileId: string; role: "featured" | "co_artist" }>>();
+  for (const credit of artistCreditRows) artistCreditsByRelease.set(credit.releaseId, [...(artistCreditsByRelease.get(credit.releaseId) ?? []), { artistProfileId: credit.artistProfileId, role: credit.creditRole }]);
+  const additionalCreditsByRelease = new Map<string, Array<{ role: string; contributorName: string; artistProfileId: string | null }>>();
+  for (const credit of additionalCreditRows) additionalCreditsByRelease.set(credit.releaseId, [...(additionalCreditsByRelease.get(credit.releaseId) ?? []), { role: credit.role, contributorName: credit.contributorName, artistProfileId: credit.contributorArtistProfileId }]);
   const stageRows = stageSubmissionsAvailable && profiles.length
     ? await db.select().from(stagePerformances).where(inArray(stagePerformances.artistProfileId, profiles.map((profile) => profile.id))).orderBy(asc(stagePerformances.createdAt))
     : [];
@@ -77,6 +84,7 @@ export default async function ArtistDashboardPage({ searchParams }: { searchPara
     <ArtistDashboardClient
       displayName={access.user.displayName}
       profiles={profiles.map((profile) => ({ ...profile, profilePhotoUrl: profile.profilePhotoUrl }))}
+      studioMembers={studioMembers}
       aiPolicies={aiPolicies}
       mediaUploadsAvailable={mediaUploadsAvailable}
       stageSubmissionsAvailable={stageSubmissionsAvailable}
@@ -84,6 +92,8 @@ export default async function ArtistDashboardPage({ searchParams }: { searchPara
       initialStagePerformances={stageRows.map((performance) => ({ ...performance, performanceDate: performance.performanceDate?.toISOString() ?? null, createdAt: performance.createdAt.toISOString(), updatedAt: performance.updatedAt.toISOString(), reviewNote: stageReviewNotes.get(performance.id) ?? null }))}
       initialReleases={releaseRows.map((release) => ({
         ...release,
+        artistCredits: artistCreditsByRelease.get(release.id) ?? [],
+        additionalCredits: additionalCreditsByRelease.get(release.id) ?? [],
         releaseDate: release.releaseDate?.toISOString() ?? null,
         createdAt: release.createdAt.toISOString(),
         updatedAt: release.updatedAt.toISOString(),

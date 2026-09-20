@@ -100,6 +100,7 @@ export const adminAuditLogs = sqliteTable("admin_audit_logs", {
 export const artistProfiles = sqliteTable("artist_profiles", {
   id: text("id").primaryKey(),
   ownerMemberId: text("owner_member_id").references(() => members.id, { onDelete: "set null" }),
+  studioMemberId: text("studio_member_id").references(() => members.id, { onDelete: "set null" }),
   slug: text("slug").notNull(),
   stageName: text("stage_name").notNull(),
   profilePhotoUrl: text("profile_photo_url"),
@@ -119,6 +120,7 @@ export const artistProfiles = sqliteTable("artist_profiles", {
   uniqueIndex("idx_artist_profiles_slug").on(table.slug),
   index("idx_artist_profiles_visibility").on(table.visibility, table.countryRegion),
   index("idx_artist_profiles_owner").on(table.ownerMemberId),
+  index("idx_artist_profiles_studio").on(table.studioMemberId),
 ]);
 
 export const releases = sqliteTable("releases", {
@@ -159,6 +161,34 @@ export const releases = sqliteTable("releases", {
   uniqueIndex("idx_releases_legacy_track").on(table.legacyTrackId),
   index("idx_releases_artist").on(table.artistProfileId),
   index("idx_releases_approval_lane").on(table.approvalStatus, table.discoveryLane),
+]);
+
+// A release keeps one canonical row and one primary artist for stable IDs, stats, and likes.
+// These optional rows add linked collaborators without copying the release itself.
+export const releaseArtistCredits = sqliteTable("release_artist_credits", {
+  id: text("id").primaryKey(),
+  releaseId: text("release_id").notNull().references(() => releases.id, { onDelete: "cascade" }),
+  artistProfileId: text("artist_profile_id").notNull().references(() => artistProfiles.id, { onDelete: "cascade" }),
+  creditRole: text("credit_role", { enum: ["featured", "co_artist"] }).notNull(),
+  position: integer("position").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [
+  uniqueIndex("idx_release_artist_credit_unique").on(table.releaseId, table.artistProfileId, table.creditRole),
+  index("idx_release_artist_credit_artist").on(table.artistProfileId),
+]);
+
+export const releaseCredits = sqliteTable("release_credits", {
+  id: text("id").primaryKey(),
+  releaseId: text("release_id").notNull().references(() => releases.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  contributorName: text("contributor_name").notNull(),
+  contributorArtistProfileId: text("contributor_artist_profile_id").references(() => artistProfiles.id, { onDelete: "set null" }),
+  position: integer("position").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [
+  index("idx_release_credits_release").on(table.releaseId, table.position),
+  index("idx_release_credits_contributor").on(table.contributorArtistProfileId),
 ]);
 
 export const releaseMedia = sqliteTable("release_media", {

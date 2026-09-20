@@ -1,6 +1,7 @@
 export type AdminArtist = {
   id: string;
   ownerMemberId: string | null;
+  studioMemberId: string | null;
   slug: string;
   stageName: string;
   biography: string;
@@ -45,6 +46,8 @@ export type AdminRelease = {
   reviewedAt: string | null;
   reviewedBy: string | null;
   featured: boolean;
+  artistCredits?: Array<{ artistProfileId: string; role: "featured" | "co_artist" }>;
+  additionalCredits?: Array<{ role: string; contributorName: string; artistProfileId: string | null }>;
 };
 
 export type CatalogSaveResponse =

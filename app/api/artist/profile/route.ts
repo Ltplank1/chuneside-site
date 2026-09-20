@@ -3,13 +3,14 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { adminAuditLogs, artistProfiles } from "@/db/schema";
+import { adminAuditLogs, artistProfiles, members } from "@/db/schema";
 import { getArtistWorkspaceAccess } from "@/lib/artist-access";
 
 export const dynamic = "force-dynamic";
 
 const profileSchema = z.object({
   artistProfileId: z.string().min(1),
+  studioMemberId: z.string().min(1).nullable().optional(),
   biography: z.string().trim().max(2000),
   countryRegion: z.string().trim().min(1).max(120),
   primaryGenre: z.string().trim().min(1).max(80),
@@ -42,7 +43,13 @@ export async function POST(request: Request) {
       ["YouTube", input.youtubeUrl],
   ].filter((entry): entry is [string, string] => Boolean(entry[1]))));
   const now = new Date();
+  let studioMemberId: string | null = input.studioMemberId ?? null;
+  if (studioMemberId) {
+    const [studio] = await db.select({ accountRole: members.accountRole, accountStatus: members.accountStatus }).from(members).where(eq(members.id, studioMemberId)).limit(1);
+    if (!studio || studio.accountRole !== "studio" || studio.accountStatus !== "active") return NextResponse.json({ error: "Choose an active Studio account." }, { status: 400 });
+  }
   await db.update(artistProfiles).set({
+    studioMemberId,
     biography: input.biography,
     countryRegion: input.countryRegion,
     primaryGenre: input.primaryGenre,

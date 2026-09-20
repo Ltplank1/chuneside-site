@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { adminAuditLogs, artistProfiles, releaseMedia, releases } from "@/db/schema";
+import { adminAuditLogs, artistProfiles, releaseArtistCredits, releaseCredits, releaseMedia, releases } from "@/db/schema";
 import { aiClassifications, creationTypeFromAiClassification, type AiClassification } from "@/lib/ai-upload-policy";
 import { getArtistWorkspaceAccess } from "@/lib/artist-access";
 import { getMediaBucket } from "@/lib/media-storage";
@@ -24,6 +24,8 @@ const inputSchema = z.object({
   rightsConfirmed: z.literal(true, { message: "You must confirm that you hold the required rights." }),
   aiDisclosure: z.string().trim().max(1000).optional(),
   submissionNotes: z.string().trim().max(1000).optional(),
+  artistCredits: z.array(z.object({ artistProfileId: z.string().min(1), role: z.enum(["featured", "co_artist"]) })).max(50).default([]),
+  additionalCredits: z.array(z.object({ role: z.string().trim().min(1).max(80), contributorName: z.string().trim().min(1).max(160), artistProfileId: z.string().min(1).nullable().optional() })).max(100).default([]),
 }).superRefine((input, context) => {
   if (input.aiClassification !== "human_created" && !input.aiDisclosure) {
     context.addIssue({ code: "custom", path: ["aiDisclosure"], message: "Describe how AI was used in this release." });
@@ -73,6 +75,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ re
       reviewedBy: null,
       updatedAt: now,
     }).where(eq(releases.id, releaseId));
+    await db.delete(releaseArtistCredits).where(eq(releaseArtistCredits.releaseId, releaseId));
+    await db.delete(releaseCredits).where(eq(releaseCredits.releaseId, releaseId));
+    if (parsed.data.artistCredits.length) await db.insert(releaseArtistCredits).values(parsed.data.artistCredits.map((credit, position) => ({ id: randomUUID(), releaseId, artistProfileId: credit.artistProfileId, creditRole: credit.role, position, createdAt: now })));
+    if (parsed.data.additionalCredits.length) await db.insert(releaseCredits).values(parsed.data.additionalCredits.map((credit, position) => ({ id: randomUUID(), releaseId, role: credit.role, contributorName: credit.contributorName, contributorArtistProfileId: credit.artistProfileId || null, position, createdAt: now, updatedAt: now })));
     await db.insert(adminAuditLogs).values({
       id: randomUUID(), actorId: access.user.id, actorEmail: access.user.email,
       action: "artist.release_resubmit", entityType: "release", entityId: releaseId,

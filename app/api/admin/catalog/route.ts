@@ -4,7 +4,7 @@ import { eq, max } from "drizzle-orm";
 import { z } from "zod";
 import { requireAdminUser } from "@/app/admin-auth";
 import { getDb } from "@/db";
-import { adminAuditLogs, artistProfiles, members, releases } from "@/db/schema";
+import { adminAuditLogs, artistProfiles, members, releaseArtistCredits, releaseCredits, releases } from "@/db/schema";
 import {
   aiClassificationFromCreationType,
   aiClassifications,
@@ -25,6 +25,7 @@ const artistInput = z.object({
   entity: z.literal("artist"),
   id: z.string().optional(),
   ownerMemberId: z.string().min(1).transform((value) => value === "__none__" ? null : value),
+  studioMemberId: z.string().min(1).transform((value) => value === "__none__" ? null : value),
   stageName: z.string().trim().min(1).max(120),
   slug: slugField,
   biography: z.string().trim().max(2000),
@@ -60,6 +61,8 @@ const releaseInput = z.object({
   downloadEligibility: z.enum(["streaming_only", "free_download", "paid_download"]),
   approvalStatus: z.enum(["draft", "pending", "approved", "rejected", "disabled"]),
   featured: z.boolean(),
+  artistCredits: z.array(z.object({ artistProfileId: z.string().min(1), role: z.enum(["featured", "co_artist"]) })).max(50).default([]),
+  additionalCredits: z.array(z.object({ role: z.string().trim().min(1).max(80), contributorName: z.string().trim().min(1).max(160), artistProfileId: z.string().min(1).nullable().optional() })).max(100).default([]),
 });
 
 const catalogInput = z.discriminatedUnion("entity", [artistInput, releaseInput]);
@@ -86,6 +89,12 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Linked workspace owners must be active Artist, Studio, or Admin accounts." }, { status: 400 });
         }
       }
+      if (input.studioMemberId) {
+        const [studio] = await db.select({ accountRole: members.accountRole, accountStatus: members.accountStatus }).from(members).where(eq(members.id, input.studioMemberId)).limit(1);
+        if (!studio || studio.accountStatus !== "active" || studio.accountRole !== "studio") {
+          return NextResponse.json({ error: "The associated studio must be an active Studio account." }, { status: 400 });
+        }
+      }
       const socialLinksJson = JSON.stringify(Object.fromEntries([
         ["Website", input.websiteUrl],
         ["Instagram", input.instagramUrl],
@@ -95,6 +104,7 @@ export async function POST(request: Request) {
       ].filter((entry): entry is [string, string] => Boolean(entry[1]))));
       const values = {
         ownerMemberId: input.ownerMemberId,
+        studioMemberId: input.studioMemberId,
         slug: input.slug,
         stageName: input.stageName,
         biography: input.biography,
@@ -117,6 +127,7 @@ export async function POST(request: Request) {
         ownerMemberId: input.ownerMemberId,
         visibility: input.visibility,
         verificationStatus: input.verificationStatus,
+        studioMemberId: input.studioMemberId,
       }, now);
       const [item] = await db.select().from(artistProfiles).where(eq(artistProfiles.id, id)).limit(1);
       return NextResponse.json({ entity: "artist", item });
@@ -198,9 +209,32 @@ export async function POST(request: Request) {
       aiClassification,
     }, now);
     const [item] = await db.select().from(releases).where(eq(releases.id, id)).limit(1);
+    await syncReleaseCredits(db, id, input.artistCredits, input.additionalCredits, now);
     return NextResponse.json({ entity: "release", item });
   } catch {
     return NextResponse.json({ error: "That slug or catalogue number may already be in use." }, { status: 409 });
+  }
+}
+
+async function syncReleaseCredits(
+  db: ReturnType<typeof getDb>,
+  releaseId: string,
+  artistCredits: Array<{ artistProfileId: string; role: "featured" | "co_artist" }>,
+  additionalCredits: Array<{ role: string; contributorName: string; artistProfileId?: string | null }>,
+  now: Date,
+) {
+  await db.delete(releaseArtistCredits).where(eq(releaseArtistCredits.releaseId, releaseId));
+  await db.delete(releaseCredits).where(eq(releaseCredits.releaseId, releaseId));
+  if (artistCredits.length) {
+    await db.insert(releaseArtistCredits).values(artistCredits.map((credit, position) => ({
+      id: randomUUID(), releaseId, artistProfileId: credit.artistProfileId, creditRole: credit.role, position, createdAt: now,
+    })));
+  }
+  if (additionalCredits.length) {
+    await db.insert(releaseCredits).values(additionalCredits.map((credit, position) => ({
+      id: randomUUID(), releaseId, role: credit.role, contributorName: credit.contributorName,
+      contributorArtistProfileId: credit.artistProfileId || null, position, createdAt: now, updatedAt: now,
+    })));
   }
 }
 

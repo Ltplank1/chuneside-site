@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { adminAuditLogs, artistProfiles, releases } from "@/db/schema";
+import { adminAuditLogs, artistProfiles, releaseArtistCredits, releaseCredits, releases } from "@/db/schema";
 import {
   aiClassifications,
   creationTypeFromAiClassification,
@@ -34,6 +34,8 @@ const inputSchema = z.object({
   rightsConfirmed: z.literal(true, { message: "You must confirm that you hold the required rights." }),
   aiDisclosure: z.string().trim().max(1000).optional(),
   submissionNotes: z.string().trim().max(1000).optional(),
+  artistCredits: z.array(z.object({ artistProfileId: z.string().min(1), role: z.enum(["featured", "co_artist"]) })).max(50).default([]),
+  additionalCredits: z.array(z.object({ role: z.string().trim().min(1).max(80), contributorName: z.string().trim().min(1).max(160), artistProfileId: z.string().min(1).nullable().optional() })).max(100).default([]),
 }).superRefine((input, context) => {
   const aiClassification = input.aiClassification ?? (input.creationType === "ai_assisted" ? "ai_assisted" : "human_created");
   if (aiClassification !== "human_created" && !input.aiDisclosure) {
@@ -103,6 +105,8 @@ export async function POST(request: Request) {
       createdAt: now,
       updatedAt: now,
     });
+    if (parsed.data.artistCredits.length) await db.insert(releaseArtistCredits).values(parsed.data.artistCredits.map((credit, position) => ({ id: randomUUID(), releaseId: id, artistProfileId: credit.artistProfileId, creditRole: credit.role, position, createdAt: now })));
+    if (parsed.data.additionalCredits.length) await db.insert(releaseCredits).values(parsed.data.additionalCredits.map((credit, position) => ({ id: randomUUID(), releaseId: id, role: credit.role, contributorName: credit.contributorName, contributorArtistProfileId: credit.artistProfileId || null, position, createdAt: now, updatedAt: now })));
     await db.insert(adminAuditLogs).values({
       id: randomUUID(),
       actorId: access.user.id,

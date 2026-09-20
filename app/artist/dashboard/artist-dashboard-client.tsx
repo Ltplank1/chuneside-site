@@ -27,6 +27,7 @@ type WorkspaceProfile = {
   coverImageUrl: string | null;
   biography: string;
   socialLinksJson: string;
+  studioMemberId: string | null;
 };
 
 type WorkspaceRelease = {
@@ -50,6 +51,8 @@ type WorkspaceRelease = {
   aiDisclosure: string | null;
   submissionNotes: string | null;
   reviewNote: string | null;
+  artistCredits?: Array<{ artistProfileId: string; role: "featured" | "co_artist" }>;
+  additionalCredits?: Array<{ role: string; contributorName: string; artistProfileId: string | null }>;
 };
 
 type WorkspaceMedia = {
@@ -90,9 +93,10 @@ type WorkspaceStagePerformance = {
   reviewNote: string | null;
 };
 
-export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initialReleases, initialMedia, initialStagePerformances, mediaUploadsAvailable, stageSubmissionsAvailable, pendingDeleteId }: {
+export function ArtistDashboardClient({ displayName, profiles, studioMembers, aiPolicies, initialReleases, initialMedia, initialStagePerformances, mediaUploadsAvailable, stageSubmissionsAvailable, pendingDeleteId }: {
   displayName: string;
   profiles: WorkspaceProfile[];
+  studioMembers: Array<{ id: string; displayName: string }>;
   aiPolicies: AiPolicySummary[];
   initialReleases: WorkspaceRelease[];
   initialMedia: WorkspaceMedia[];
@@ -164,6 +168,8 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
         rightsConfirmed: form.get("rightsConfirmed") === "on",
         aiDisclosure: form.get("aiDisclosure"),
         submissionNotes: form.get("submissionNotes"),
+        artistCredits: parseCredits(form.get("artistCredits")),
+        additionalCredits: parseAdditionalCredits(form.get("additionalCredits")),
       }),
     });
     const data = await response.json() as { release?: WorkspaceRelease; error?: string };
@@ -337,6 +343,8 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
         rightsConfirmed: form.get("rightsConfirmed") === "on",
         aiDisclosure: form.get("aiDisclosure"),
         submissionNotes: form.get("submissionNotes"),
+        artistCredits: parseCredits(form.get("artistCredits")),
+        additionalCredits: parseAdditionalCredits(form.get("additionalCredits")),
       }),
     });
     const data = await response.json() as { release?: WorkspaceRelease; error?: string };
@@ -406,6 +414,7 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         artistProfileId: profileOpen.id,
+        studioMemberId: form.get("studioMemberId") || null,
         biography: form.get("biography"),
         countryRegion: form.get("countryRegion"),
         primaryGenre: form.get("primaryGenre"),
@@ -511,7 +520,7 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
 
       <ReleaseDialog open={open} profiles={profiles} busy={busy} error={error} onClose={() => setOpen(false)} onSubmit={submitRelease} />
       <MediaDialog open={mediaOpen} releases={releaseRows.filter((release) => !["approved", "disabled"].includes(release.approvalStatus))} busy={busy} error={error} onClose={() => setMediaOpen(false)} onSubmit={uploadMedia} />
-      <ProfileDialog profile={profileOpen} busy={busy} error={error} onClose={() => setProfileOpen(null)} onSubmit={saveProfile} />
+      <ProfileDialog profile={profileOpen} studioMembers={studioMembers} busy={busy} error={error} onClose={() => setProfileOpen(null)} onSubmit={saveProfile} />
       <ReleaseCorrectionDialog release={releaseEditOpen} busy={busy} error={error} onClose={() => setReleaseEditOpen(null)} onSubmit={resubmitRelease} />
       <Dialog open={Boolean(deleteTarget)} onOpenChange={(next) => !next && !busy && setDeleteTarget(null)}>
         <DialogContent className="catalog-editor-dialog">
@@ -529,7 +538,7 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
   );
 }
 
-function ProfileDialog({ profile, busy, error, onClose, onSubmit }: { profile: WorkspaceProfile | null; busy: boolean; error: string; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+function ProfileDialog({ profile, studioMembers, busy, error, onClose, onSubmit }: { profile: WorkspaceProfile | null; studioMembers: Array<{ id: string; displayName: string }>; busy: boolean; error: string; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
   const links = readSocialLinks(profile?.socialLinksJson);
   return <Dialog open={Boolean(profile)} onOpenChange={(next) => !next && onClose()}>
     <DialogContent className="catalog-editor-dialog">
@@ -538,6 +547,7 @@ function ProfileDialog({ profile, busy, error, onClose, onSubmit }: { profile: W
         <div className="catalog-form-grid">
           <Field label="Country or region"><Input name="countryRegion" required maxLength={120} defaultValue={profile.countryRegion} /></Field>
           <Field label="Primary genre"><Input name="primaryGenre" required maxLength={80} defaultValue={profile.primaryGenre} /></Field>
+          <Field label="Associated studio (optional)"><NativeSelect name="studioMemberId" defaultValue={profile.studioMemberId ?? ""}><NativeSelectOption value="">No studio association</NativeSelectOption>{studioMembers.map((studio) => <NativeSelectOption key={studio.id} value={studio.id}>{studio.displayName}</NativeSelectOption>)}</NativeSelect></Field>
           <Field label="Website"><Input name="websiteUrl" type="url" defaultValue={links.Website ?? ""} /></Field>
           <Field label="Instagram"><Input name="instagramUrl" type="url" defaultValue={links.Instagram ?? ""} /></Field>
           <Field label="Spotify"><Input name="spotifyUrl" type="url" defaultValue={links.Spotify ?? ""} /></Field>
@@ -550,6 +560,34 @@ function ProfileDialog({ profile, busy, error, onClose, onSubmit }: { profile: W
       </form>}
     </DialogContent>
   </Dialog>;
+}
+
+function ReleaseCreditsFields({ initialArtistCredits = [], initialAdditionalCredits = [] }: {
+  initialArtistCredits?: Array<{ artistProfileId: string; role: "featured" | "co_artist" }>;
+  initialAdditionalCredits?: Array<{ role: string; contributorName: string; artistProfileId: string | null }>;
+}) {
+  const [query, setQuery] = useState("");
+  const [matches, setMatches] = useState<Array<{ id: string; stageName: string }>>([]);
+  const [linked, setLinked] = useState(initialArtistCredits);
+  const [additional, setAdditional] = useState(initialAdditionalCredits);
+
+  useEffect(() => {
+    if (query.trim().length < 2) { setMatches([]); return; }
+    const controller = new AbortController();
+    fetch(`/api/artists/search?q=${encodeURIComponent(query)}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : { artists: [] }).then((data: { artists?: Array<{ id: string; stageName: string }> }) => setMatches(data.artists ?? [])).catch(() => undefined);
+    return () => controller.abort();
+  }, [query]);
+
+  return <section className="catalog-credits-panel" aria-label="Release credits">
+    <div className="catalog-section-heading"><div><span className="kicker">Rich credits</span><h3>Collaborators and contributors</h3></div><small>Optional. One release, unified stats.</small></div>
+    <p className="catalog-help-copy">Search for featured or co-artists to link their ChuneSide profiles. Add any number of named contributors, including producers, engineers, songwriters, and musicians.</p>
+    <div className="catalog-artist-search"><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search artist profiles to add" aria-label="Search artist profiles to add" />{matches.length > 0 && <div className="catalog-artist-suggestions">{matches.map((artist) => <button type="button" key={artist.id} onClick={() => { if (!linked.some((item) => item.artistProfileId === artist.id)) setLinked((current) => [...current, { artistProfileId: artist.id, role: "featured" }]); setQuery(""); setMatches([]); }}>{artist.stageName}</button>)}</div>}</div>
+    {linked.map((credit, index) => <div className="catalog-credit-row" key={`${credit.artistProfileId}-${index}`}><span>{matches.find((artist) => artist.id === credit.artistProfileId)?.stageName ?? "Linked artist profile"}</span><NativeSelect value={credit.role} onChange={(event) => setLinked((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, role: event.target.value as "featured" | "co_artist" } : item))}><NativeSelectOption value="featured">Featured artist</NativeSelectOption><NativeSelectOption value="co_artist">Co-artist</NativeSelectOption></NativeSelect><Button type="button" variant="ghost" size="icon" aria-label="Remove linked artist" onClick={() => setLinked((current) => current.filter((_, itemIndex) => itemIndex !== index))}>x</Button></div>)}
+    {additional.map((credit, index) => <div className="catalog-credit-row" key={`additional-${index}`}><Input value={credit.role} onChange={(event) => setAdditional((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, role: event.target.value } : item))} placeholder="Role" aria-label="Contributor role" /><Input value={credit.contributorName} onChange={(event) => setAdditional((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, contributorName: event.target.value } : item))} placeholder="Contributor name" aria-label="Contributor name" /><Button type="button" variant="ghost" size="icon" aria-label="Remove contributor" onClick={() => setAdditional((current) => current.filter((_, itemIndex) => itemIndex !== index))}>x</Button></div>)}
+    <Button type="button" variant="outline" onClick={() => setAdditional((current) => [...current, { role: "", contributorName: "", artistProfileId: null }])}>Add contributor credit</Button>
+    <input type="hidden" name="artistCredits" value={JSON.stringify(linked)} />
+    <input type="hidden" name="additionalCredits" value={JSON.stringify(additional)} />
+  </section>;
 }
 
 function MediaDialog({ open, releases, busy, error, onClose, onSubmit }: { open: boolean; releases: WorkspaceRelease[]; busy: boolean; error: string; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
@@ -604,6 +642,7 @@ function ReleaseDialog({ open, profiles, busy, error, onClose, onSubmit }: {
             <Field label="AI use disclosure"><Textarea name="aiDisclosure" maxLength={1000} placeholder="Required for AI-assisted releases: describe the tools used and what they contributed." /></Field>
             <Field label="Submission notes"><Textarea name="submissionNotes" maxLength={1000} placeholder="Optional context for the ChuneSide review team." /></Field>
           </div>
+          <ReleaseCreditsFields />
           <label className="catalog-check rights-confirmation"><input name="rightsConfirmed" type="checkbox" required /><span>I confirm I own or have permission to use the music, samples, artwork, voices, and likenesses in this submission.</span></label>
           {error && <p className="catalog-editor-error" role="alert">{error}</p>}
           <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Send />} Submit for review</Button></DialogFooter>
@@ -631,6 +670,7 @@ function ReleaseCorrectionDialog({ release, busy, error, onClose, onSubmit }: { 
           <Field label="AI use disclosure"><Textarea name="aiDisclosure" maxLength={1000} defaultValue={release.aiDisclosure ?? ""} /></Field>
           <Field label="Submission notes"><Textarea name="submissionNotes" maxLength={1000} defaultValue={release.submissionNotes ?? ""} /></Field>
         </div>
+        <ReleaseCreditsFields initialArtistCredits={release.artistCredits} initialAdditionalCredits={release.additionalCredits} />
         <p className="radio-ready-copy"><strong>Create freely. Submit clean. Get discovered.</strong> For ChuneSide, resubmit the clean radio-ready version prepared for opportunity.</p>
         <label className="catalog-check rights-confirmation"><input name="rightsConfirmed" type="checkbox" required defaultChecked={release.rightsConfirmed} /><span>I confirm I own or have permission to use the music, samples, artwork, voices, and likenesses in this submission.</span></label>
         {error && <p className="catalog-editor-error" role="alert">{error}</p>}
@@ -829,6 +869,20 @@ function readSocialLinks(value?: string) {
   } catch {
     return {};
   }
+}
+
+function parseCredits(value: FormDataEntryValue | null) {
+  try {
+    const parsed = JSON.parse(typeof value === "string" ? value : "[]");
+    return Array.isArray(parsed) ? parsed.filter((item): item is { artistProfileId: string; role: "featured" | "co_artist" } => Boolean(item && typeof item.artistProfileId === "string" && (item.role === "featured" || item.role === "co_artist"))) : [];
+  } catch { return []; }
+}
+
+function parseAdditionalCredits(value: FormDataEntryValue | null) {
+  try {
+    const parsed = JSON.parse(typeof value === "string" ? value : "[]");
+    return Array.isArray(parsed) ? parsed.filter((item): item is { role: string; contributorName: string; artistProfileId: string | null } => Boolean(item && typeof item.role === "string" && item.role.trim() && typeof item.contributorName === "string" && item.contributorName.trim())).map((item) => ({ ...item, role: item.role.trim(), contributorName: item.contributorName.trim(), artistProfileId: typeof item.artistProfileId === "string" && item.artistProfileId ? item.artistProfileId : null })) : [];
+  } catch { return []; }
 }
 
 function stageSubmissionPayload(form: FormData) {

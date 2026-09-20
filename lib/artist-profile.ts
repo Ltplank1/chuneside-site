@@ -1,8 +1,8 @@
 import { cache } from "react";
-import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { getAdminGate } from "@/app/admin-auth";
 import { getDb } from "@/db";
-import { artistProfiles, releases, stagePerformances } from "@/db/schema";
+import { artistProfiles, releaseArtistCredits, releases, stagePerformances } from "@/db/schema";
 import { baselineArtists } from "@/lib/catalog-seed";
 import { demoTracks, formatTrackDuration, type PublicTrack } from "@/lib/public-catalog";
 import { isFeatureAvailable } from "@/lib/feature-flags";
@@ -92,8 +92,13 @@ export const getPublicArtistProfile = cache(async (slug: string): Promise<Public
     )).limit(1);
     if (!artist) return fallback;
 
+    const linkedRows = await db.select({ releaseId: releaseArtistCredits.releaseId }).from(releaseArtistCredits).where(eq(releaseArtistCredits.artistProfileId, artist.id));
+    const linkedReleaseIds = linkedRows.map((row) => row.releaseId);
+    const releaseVisibility = linkedReleaseIds.length
+      ? or(eq(releases.artistProfileId, artist.id), inArray(releases.id, linkedReleaseIds))
+      : eq(releases.artistProfileId, artist.id);
     const releaseRows = await db.select().from(releases).where(and(
-      eq(releases.artistProfileId, artist.id),
+      releaseVisibility,
       eq(releases.approvalStatus, "approved"),
       isNotNull(releases.legacyTrackId),
     )).orderBy(asc(releases.releaseDate), asc(releases.title));
