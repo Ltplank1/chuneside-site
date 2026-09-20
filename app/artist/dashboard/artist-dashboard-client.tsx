@@ -779,17 +779,33 @@ async function encodeWavToMp3(file: File) {
   const audioContext = new AudioContext();
   try {
     const decoded = await audioContext.decodeAudioData(await file.arrayBuffer());
-    // lamejs 1.2.1's browser bundle leaves MPEGMode as an undeclared global in
-    // Encoder/PsyModel. Provide that dependency only for the conversion call.
-    const [modeModule, lameModule] = await Promise.all([
-      import("lamejs/src/js/MPEGMode.js"),
-      import("lamejs/src/js/Lame.js"),
-    ]);
-    const globalScope = globalThis as typeof globalThis & { MPEGMode?: unknown; Lame?: unknown };
-    const previousMode = globalScope.MPEGMode;
-    const previousLame = globalScope.Lame;
-    globalScope.MPEGMode = modeModule.default;
-    globalScope.Lame = lameModule.default;
+    // lamejs 1.2.1's modular browser entry leaves several internal classes as
+    // undeclared globals. Provide those dependencies only during conversion.
+    const compatibilityModules = await Promise.all([
+      ["MPEGMode", import("lamejs/src/js/MPEGMode.js")],
+      ["Lame", import("lamejs/src/js/Lame.js")],
+      ["BitStream", import("lamejs/src/js/BitStream.js")],
+      ["Encoder", import("lamejs/src/js/Encoder.js")],
+      ["Quantize", import("lamejs/src/js/Quantize.js")],
+      ["Reservoir", import("lamejs/src/js/Reservoir.js")],
+      ["Takehiro", import("lamejs/src/js/Takehiro.js")],
+      ["VBRTag", import("lamejs/src/js/VBRTag.js")],
+      ["Version", import("lamejs/src/js/Version.js")],
+      ["GainAnalysis", import("lamejs/src/js/GainAnalysis.js")],
+      ["Presets", import("lamejs/src/js/Presets.js")],
+      ["QuantizePVT", import("lamejs/src/js/QuantizePVT.js")],
+      ["NewMDCT", import("lamejs/src/js/NewMDCT.js")],
+      ["CBRNewIterationLoop", import("lamejs/src/js/CBRNewIterationLoop.js")],
+      ["LameInternalFlags", import("lamejs/src/js/LameInternalFlags.js")],
+      ["LameGlobalFlags", import("lamejs/src/js/LameGlobalFlags.js")],
+      ["PsyModel", import("lamejs/src/js/PsyModel.js")],
+    ] as const);
+    const globalScope = globalThis as typeof globalThis & Record<string, unknown>;
+    const previousGlobals = new Map<string, unknown>();
+    for (const [name, module] of compatibilityModules) {
+      previousGlobals.set(name, globalScope[name]);
+      globalScope[name] = module.default;
+    }
     const lame = await import("lamejs");
     try {
       const channels = Math.min(decoded.numberOfChannels, 2);
@@ -805,10 +821,10 @@ async function encodeWavToMp3(file: File) {
       if (tail.length) parts.push(Uint8Array.from(tail));
       return new File(parts, file.name.replace(/\.wav$/i, ".mp3"), { type: "audio/mpeg" });
     } finally {
-      if (previousMode === undefined) delete globalScope.MPEGMode;
-      else globalScope.MPEGMode = previousMode;
-      if (previousLame === undefined) delete globalScope.Lame;
-      else globalScope.Lame = previousLame;
+      for (const [name, previous] of previousGlobals) {
+        if (previous === undefined) delete globalScope[name];
+        else globalScope[name] = previous;
+      }
     }
   } finally {
     await audioContext.close();
