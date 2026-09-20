@@ -98,15 +98,25 @@ function AdminAdPreview({ campaign }: { campaign: Campaign | null }) {
 }
 
 async function uploadCampaignMedia(campaignId: string, files: readonly [string, FormDataEntryValue | null][], onFinished: (error: string | null) => void) {
+  const chunkSize = 1024 * 1024;
   for (const [kind, file] of files) if (file instanceof File && file.size) {
-    const upload = new FormData(); upload.set("campaignId", campaignId); upload.set("kind", kind); upload.set("file", file);
-    const uploadResponse = await fetch("/api/admin/advertising/media", { method: "POST", body: upload }).catch(() => null);
-    if (!uploadResponse?.ok) {
+    const totalChunks = Math.ceil(file.size / chunkSize);
+    let uploadId: string | null = null;
+    const parts: Array<{ partNumber: number; etag: string }> = [];
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+      const start = chunkIndex * chunkSize;
+      const upload = new FormData();
+      upload.set("campaignId", campaignId); upload.set("kind", kind); upload.set("fileSize", String(file.size)); upload.set("contentType", file.type); upload.set("chunkIndex", String(chunkIndex)); upload.set("totalChunks", String(totalChunks));
+      if (uploadId) upload.set("uploadId", uploadId);
+      if (chunkIndex === totalChunks - 1) upload.set("parts", JSON.stringify(parts));
+      upload.set("file", file.slice(start, Math.min(start + chunkSize, file.size)), file.name);
+      const uploadResponse = await fetch("/api/admin/advertising/media", { method: "POST", body: upload }).catch(() => null);
       const responseText = await uploadResponse?.text().catch(() => "") ?? "";
-      let uploadData: { error?: string } | null = null;
-      try { uploadData = responseText ? JSON.parse(responseText) as { error?: string } : null; } catch { /* Non-JSON worker errors are handled by the fallback below. */ }
-      onFinished(uploadData?.error ?? `${kind === "video" ? "Video" : "Poster"} upload failed. Please try again.`);
-      return;
+      let uploadData: { error?: string; uploadId?: string; part?: { partNumber: number; etag: string } } | null = null;
+      try { uploadData = responseText ? JSON.parse(responseText) as typeof uploadData : null; } catch { /* Non-JSON worker errors are handled by the fallback below. */ }
+      if (!uploadResponse?.ok || !uploadData) { onFinished(uploadData?.error ?? `${kind === "video" ? "Video" : "Poster"} upload failed. Please try again.`); return; }
+      uploadId = uploadData.uploadId ?? uploadId;
+      if (uploadData.part) parts.push(uploadData.part);
     }
   }
   onFinished(null);

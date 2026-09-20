@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { requireAdminUser } from "@/app/admin-auth";
 import { getDb } from "@/db";
 import { adCampaigns, adminAuditLogs } from "@/db/schema";
-import { getMediaBucket } from "@/lib/media-storage";
+import { getMediaBucket, type MediaMultipartPart } from "@/lib/media-storage";
 import { validateMediaFile } from "@/lib/media-policy";
 
 export const dynamic = "force-dynamic";
@@ -18,23 +18,56 @@ export async function POST(request: Request) {
     const kind = form?.get("kind");
     const file = form?.get("file");
     if (typeof id !== "string" || (kind !== "video" && kind !== "poster") || !(file instanceof File) || file.size < 1) return NextResponse.json({ error: "Choose a video or poster file." }, { status: 400 });
+    const totalSize = Number(form?.get("fileSize") ?? file.size);
+    const chunkIndex = Number(form?.get("chunkIndex") ?? 0);
+    const totalChunks = Number(form?.get("totalChunks") ?? 1);
+    const uploadId = form?.get("uploadId");
     const header = new Uint8Array(await file.slice(0, 32).arrayBuffer());
-    const contentType = kind === "video" ? resolveVideoContentType(file.type, header) : file.type;
+    const contentType = kind === "video" ? resolveVideoContentType(String(form?.get("contentType") ?? file.type), header) : String(form?.get("contentType") ?? file.type);
+    if (!Number.isSafeInteger(totalSize) || totalSize < 1 || !Number.isSafeInteger(chunkIndex) || chunkIndex < 0 || !Number.isSafeInteger(totalChunks) || totalChunks < 1 || chunkIndex >= totalChunks || file.size > totalSize || (chunkIndex === 0 && uploadId)) return NextResponse.json({ error: "The media upload could not be resumed safely." }, { status: 400 });
+    if (chunkIndex === 0 && file.size < totalSize && totalChunks === 1) return NextResponse.json({ error: "The media upload is incomplete. Please try again." }, { status: 400 });
+    if (chunkIndex > 0 && (typeof uploadId !== "string" || !uploadId)) return NextResponse.json({ error: "The media upload session is missing. Please try again." }, { status: 400 });
     if (!contentType) return NextResponse.json({ error: "Unsupported video file type. Choose an MP4 or WebM file." }, { status: 400 });
-    const error = validateMediaFile(kind === "video" ? "video" : "cover", { size: file.size, type: contentType }, header);
+    const error = validateMediaFile(kind === "video" ? "video" : "cover", { size: totalSize, type: contentType }, header);
     if (error) return NextResponse.json({ error }, { status: 400 });
     const db = getDb();
     const [campaign] = await db.select({ id: adCampaigns.id }).from(adCampaigns).where(eq(adCampaigns.id, id)).limit(1);
     if (!campaign) return NextResponse.json({ error: "Campaign not found." }, { status: 404 });
     const objectKey = `ads/${id}/${kind}`;
-    await getMediaBucket().put(objectKey, await file.arrayBuffer(), { httpMetadata: { contentType }, customMetadata: { campaignId: id, uploaderMemberId: admin.id, kind: `ad-${kind}` } });
+    const bucket = getMediaBucket();
+    const multipart = chunkIndex === 0
+      ? await bucket.createMultipartUpload(objectKey, { httpMetadata: { contentType }, customMetadata: { campaignId: id, uploaderMemberId: admin.id, kind: `ad-${kind}` } })
+      : bucket.resumeMultipartUpload(objectKey, String(uploadId));
+    const part = await multipart.uploadPart(chunkIndex + 1, await file.arrayBuffer());
+    if (chunkIndex < totalChunks - 1) return NextResponse.json({ complete: false, uploadId: getUploadId(multipart), part });
+    const rawParts = form?.get("parts");
+    const parts = rawParts ? parseParts(String(rawParts), totalChunks - 1) : null;
+    if (!parts) return NextResponse.json({ error: "The media upload parts are incomplete. Please try again." }, { status: 400 });
+    parts[chunkIndex] = part;
+    await multipart.complete(parts);
     const now = new Date();
-    await db.update(adCampaigns).set(kind === "video" ? { videoObjectKey: objectKey, videoContentType: contentType, videoSizeBytes: file.size, updatedAt: now, updatedBy: admin.email } : { posterObjectKey: objectKey, posterContentType: contentType, posterSizeBytes: file.size, updatedAt: now, updatedBy: admin.email }).where(eq(adCampaigns.id, id));
-    await db.insert(adminAuditLogs).values({ id: randomUUID(), actorId: admin.id, actorEmail: admin.email, action: `advertising.${kind}_upload`, entityType: "ad_campaign", entityId: id, details: JSON.stringify({ contentType, sizeBytes: file.size }), createdAt: now });
+    await db.update(adCampaigns).set(kind === "video" ? { videoObjectKey: objectKey, videoContentType: contentType, videoSizeBytes: totalSize, updatedAt: now, updatedBy: admin.email } : { posterObjectKey: objectKey, posterContentType: contentType, posterSizeBytes: totalSize, updatedAt: now, updatedBy: admin.email }).where(eq(adCampaigns.id, id));
+    await db.insert(adminAuditLogs).values({ id: randomUUID(), actorId: admin.id, actorEmail: admin.email, action: `advertising.${kind}_upload`, entityType: "ad_campaign", entityId: id, details: JSON.stringify({ contentType, sizeBytes: totalSize }), createdAt: now });
     return NextResponse.json({ url: `/api/ads/media/${id}/${kind}?v=${Date.now()}` });
   } catch (error) {
     console.error("Advertising media upload failed", error instanceof Error ? error.message : String(error));
     return NextResponse.json({ error: "The media could not be stored. Check the file and try again." }, { status: 503 });
+  }
+}
+
+function getUploadId(upload: unknown) {
+  const id = (upload as { uploadId?: unknown }).uploadId;
+  if (typeof id !== "string" || !id) throw new Error("R2 did not return a multipart upload id.");
+  return id;
+}
+
+function parseParts(value: string, totalChunks: number) {
+  try {
+    const parts = JSON.parse(value) as MediaMultipartPart[];
+    if (!Array.isArray(parts) || parts.length !== totalChunks || parts.some((part) => !Number.isSafeInteger(part?.partNumber) || typeof part?.etag !== "string" || !part.etag)) return null;
+    return parts;
+  } catch {
+    return null;
   }
 }
 
