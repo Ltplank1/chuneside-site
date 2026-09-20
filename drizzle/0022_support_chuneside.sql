@@ -1,0 +1,22 @@
+CREATE TABLE `support_chuneside_settings` (
+	`id` text PRIMARY KEY NOT NULL,
+	`draft_enabled` integer DEFAULT false NOT NULL,
+	`published_enabled` integer DEFAULT false NOT NULL,
+	`draft_name` text NOT NULL,
+	`published_name` text NOT NULL,
+	`draft_message` text NOT NULL,
+	`published_message` text NOT NULL,
+	`draft_button_text` text NOT NULL,
+	`published_button_text` text NOT NULL,
+	`draft_icon_url` text,
+	`published_icon_url` text,
+	`draft_suggested_amounts_json` text NOT NULL,
+	`published_suggested_amounts_json` text NOT NULL,
+	`draft_starts_at` integer,
+	`published_starts_at` integer,
+	`draft_ends_at` integer,
+	`published_ends_at` integer,
+	`updated_at` integer NOT NULL,
+	`published_at` integer,
+	`updated_by` text
+);

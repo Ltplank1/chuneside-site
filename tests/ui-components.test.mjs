@@ -566,3 +566,18 @@ test("stage editor exposes normalized slugs and structured scheduling controls",
   assert.match(picker, /CalendarDays/);
   assert.match(source, /Songs or pieces performed/);
 });
+
+test("keeps ChuneSide platform support separate and provider-backed", async () => {
+  const [schema, adminRoute, checkoutRoute, adminPage, home] = await Promise.all([
+    readFile(path.join(root, "db", "schema.ts"), "utf8"),
+    readFile(path.join(root, "app", "api", "admin", "support-chuneside", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "api", "support", "checkout", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "admin", "support-chuneside", "support-chuneside-client.tsx"), "utf8"),
+    readFile(path.join(root, "app", "page.tsx"), "utf8"),
+  ]);
+  assert.match(schema, /supportChunesideSettings/);
+  assert.match(adminRoute, /support_chuneside/);
+  assert.match(checkoutRoute, /STRIPE_SECRET_KEY/);
+  assert.match(adminPage, /Restore defaults/);
+  assert.match(home, /\/api\/support/);
+});

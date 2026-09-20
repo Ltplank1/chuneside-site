@@ -6,6 +6,7 @@ import "./visualizer.css";
 import "./news-reel.css";
 import "./floating-ad.css";
 import "./advertising-admin.css";
+import "./support-admin.css";
 import { ServiceWorkerRegistration } from "./service-worker-registration";
 import { InstallPrompt } from "./install-prompt";
 

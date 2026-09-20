@@ -287,6 +287,29 @@ export const aiUploadSettings = sqliteTable("ai_upload_settings", {
   updatedBy: text("updated_by"),
 });
 
+export const supportChunesideSettings = sqliteTable("support_chuneside_settings", {
+  id: text("id").primaryKey(),
+  draftEnabled: integer("draft_enabled", { mode: "boolean" }).notNull().default(false),
+  publishedEnabled: integer("published_enabled", { mode: "boolean" }).notNull().default(false),
+  draftName: text("draft_name").notNull(),
+  publishedName: text("published_name").notNull(),
+  draftMessage: text("draft_message").notNull(),
+  publishedMessage: text("published_message").notNull(),
+  draftButtonText: text("draft_button_text").notNull(),
+  publishedButtonText: text("published_button_text").notNull(),
+  draftIconUrl: text("draft_icon_url"),
+  publishedIconUrl: text("published_icon_url"),
+  draftSuggestedAmountsJson: text("draft_suggested_amounts_json").notNull(),
+  publishedSuggestedAmountsJson: text("published_suggested_amounts_json").notNull(),
+  draftStartsAt: integer("draft_starts_at", { mode: "timestamp_ms" }),
+  publishedStartsAt: integer("published_starts_at", { mode: "timestamp_ms" }),
+  draftEndsAt: integer("draft_ends_at", { mode: "timestamp_ms" }),
+  publishedEndsAt: integer("published_ends_at", { mode: "timestamp_ms" }),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+  updatedBy: text("updated_by"),
+});
+
 export const visualizerSettings = sqliteTable("visualizer_settings", {
   id: text("id").primaryKey(),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
