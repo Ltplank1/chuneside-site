@@ -532,3 +532,27 @@ test("orders public Stage performances by active home placement", async () => {
     ["featured", "latest", "expired", "normal"],
   );
 });
+
+test("stage editor exposes normalized slugs and structured scheduling controls", async () => {
+  const { formatStageSlug, normalizeStageSlug } = await vite.ssrLoadModule("/lib/stage-policy.ts");
+  assert.equal(normalizeStageSlug("  My DJ / Set!!  "), "my-dj-set");
+  assert.equal(normalizeStageSlug("!!!"), "");
+  assert.equal(formatStageSlug("On The Road "), "on-the-road-");
+  assert.equal(normalizeStageSlug("On The Road "), "on-the-road");
+  const source = await readFile(path.join(root, "app", "admin", "stage", "stage-client.tsx"), "utf8");
+  assert.match(source, /genrePresets/);
+  assert.match(source, /countryOptions\(\)/);
+  assert.match(source, /Country\/Region/);
+  assert.match(source, /stage-region-options/);
+  assert.match(source, /DateTimeInput/);
+  assert.match(source, /index % 12\) \* 5/);
+  assert.match(source, /formatStageSlug/);
+  const [options, picker] = await Promise.all([
+    readFile(path.join(root, "lib", "submission-options.ts"), "utf8"),
+    readFile(path.join(root, "components", "ui", "date-time-input.tsx"), "utf8"),
+  ]);
+  assert.match(options, /Antigua & Barbuda/);
+  assert.match(options, /Turks & Caicos Islands/);
+  assert.match(picker, /showPicker/);
+  assert.match(picker, /CalendarDays/);
+});

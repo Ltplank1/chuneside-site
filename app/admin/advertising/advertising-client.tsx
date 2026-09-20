@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Megaphone, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateTimeInput } from "@/components/ui/date-time-input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -126,7 +127,7 @@ function DateTimeFields({ label, prefix, value }: { label: string; prefix: "star
   const date = value ? new Date(value) : null;
   const dateValue = date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : "";
   const timeValue = date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(11, 16) : "";
-  return <div className="ad-datetime-field"><span>{label}</span><div><label><span>Date</span><Input name={`${prefix}Date`} type="date" defaultValue={dateValue} /></label><label><span>Time</span><NativeSelect name={`${prefix}Time`} defaultValue={timeValue}><NativeSelectOption value="">Choose time</NativeSelectOption>{timeOptions.map((option) => <NativeSelectOption key={option.value} value={option.value}>{option.label}</NativeSelectOption>)}</NativeSelect></label></div></div>;
+  return <div className="ad-datetime-field"><span>{label}</span><div><label><span>Date</span><DateTimeInput name={`${prefix}Date`} type="date" defaultValue={dateValue} /></label><label><span>Time</span><NativeSelect name={`${prefix}Time`} defaultValue={timeValue}><NativeSelectOption value="">Choose time</NativeSelectOption>{timeOptions.map((option) => <NativeSelectOption key={option.value} value={option.value}>{option.label}</NativeSelectOption>)}</NativeSelect></label></div></div>;
 }
 
 function combineDateTime(date: FormDataEntryValue | null, time: FormDataEntryValue | null) {

@@ -7,6 +7,7 @@ import { BadgeCheck, Bell, Bot, BriefcaseBusiness, ChevronRight, Disc3, Edit3, F
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DateTimeInput } from "@/components/ui/date-time-input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { PasswordInput } from "@/app/auth/password-input";
@@ -653,7 +654,7 @@ function StageSubmissionDialog({ open, profiles, performance, busy, error, onClo
           <Field label="Duration minutes"><Input name="durationMinutes" type="number" min={1} max={180} defaultValue={performance?.durationMinutes ?? ""} /></Field>
           <Field label="Genre"><Input name="genre" required maxLength={80} defaultValue={performance?.genre ?? ""} /></Field>
           <Field label="Region"><Input name="region" required maxLength={120} defaultValue={performance?.region ?? ""} /></Field>
-          <Field label="Performance date"><Input name="performanceDate" type="datetime-local" defaultValue={dateTimeLocal(performance?.performanceDate)} /></Field>
+          <Field label="Performance date"><DateTimeInput name="performanceDate" type="datetime-local" defaultValue={dateTimeLocal(performance?.performanceDate)} /></Field>
           <Field label="Songs performed" wide><Textarea name="songsPerformed" maxLength={1000} defaultValue={songsText(performance?.songsPerformedJson)} placeholder={"Song one\nSong two\nSong three"} /></Field>
           <Field label="Description" wide><Textarea name="description" maxLength={2000} defaultValue={performance?.description ?? ""} /></Field>
           <Field label="Submission context" wide><Textarea name="originalSubmissionInfo" maxLength={2000} defaultValue={performance?.originalSubmissionInfo ?? ""} placeholder="Optional information for the Stage review team." /></Field>

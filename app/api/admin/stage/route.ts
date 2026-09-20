@@ -5,13 +5,11 @@ import { z } from "zod";
 import { requireAdminUser } from "@/app/admin-auth";
 import { getDb } from "@/db";
 import { adminAuditLogs, artistProfiles, releases, stagePerformances, stageTracklistEntries } from "@/db/schema";
-import { extractYouTubeVideoId, normalizeTracklist, parseSongsPerformed, stageFeeStatuses, stagePerformanceTypes, stagePlacements, stageStatusNeedsConsent, stageStatuses } from "@/lib/stage-policy";
+import { extractYouTubeVideoId, normalizeStageSlug, normalizeTracklist, parseSongsPerformed, stageFeeStatuses, stagePerformanceTypes, stagePlacements, stageStatusNeedsConsent, stageStatuses } from "@/lib/stage-policy";
 
 export const dynamic = "force-dynamic";
 
-const slugField = z.string().min(1).max(90).transform((value) =>
-  value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-);
+const slugField = z.string().min(1).max(90).transform(normalizeStageSlug).refine(Boolean, "Slug must contain letters or numbers.");
 const optionalUrl = z.union([z.literal(""), z.string().url().max(500)]).transform((value) => value || null);
 const optionalDate = z.union([z.literal(""), z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)])
   .transform((value) => value ? new Date(value) : null);

@@ -1,6 +1,6 @@
 export const genrePresets = [
-  "Afrobeat", "Alternative", "Dancehall", "Electronic", "Hip-hop", "House",
-  "Pop", "R&B", "Reggae", "Rock", "Soca", "World",
+  "Afrobeats", "Afrobeat", "Alternative", "Calypso", "Dancehall", "Electronic",
+  "Gospel", "Hip Hop/Rap", "Hip-hop", "House", "Pop", "R&B", "Reggae", "Rock", "Soca", "World",
 ] as const;
 
 export const moodPresets = [
@@ -9,9 +9,13 @@ export const moodPresets = [
 ] as const;
 
 export const commonCountries = [
-  "Antigua & Barbuda", "Bahamas", "Barbados", "Canada", "Dominica", "Grenada",
-  "Guyana", "Jamaica", "Saint Kitts & Nevis", "Saint Lucia",
-  "Saint Vincent & the Grenadines", "Trinidad & Tobago", "United Kingdom", "United States",
+  "Anguilla", "Antigua & Barbuda", "Aruba", "Bahamas", "Barbados", "Belize", "Bermuda",
+  "Bonaire", "British Virgin Islands", "Cayman Islands", "Cuba", "Curacao", "Dominica",
+  "Dominican Republic", "French Guiana", "Grenada", "Guadeloupe", "Guyana", "Haiti", "Jamaica",
+  "Martinique", "Montserrat", "Puerto Rico", "Saba", "Saint Barthelemy", "Saint Kitts & Nevis",
+  "Saint Lucia", "Saint Martin", "Saint Vincent & the Grenadines", "Sint Eustatius", "Sint Maarten",
+  "Suriname", "Trinidad & Tobago", "Turks & Caicos Islands", "United States Virgin Islands",
+  "Canada", "United Kingdom", "United States",
 ] as const;
 
 export function countryOptions() {

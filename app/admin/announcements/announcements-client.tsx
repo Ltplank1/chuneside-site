@@ -7,6 +7,7 @@ import { LoaderCircle, Megaphone, Pencil, Plus, Save, Trash2 } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DateTimeInput } from "@/components/ui/date-time-input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -261,8 +262,8 @@ function AnnouncementEditor({ editor, busy, error, onClose, onSubmit }: {
             <Field label="Bar height"><Input name="barHeight" type="number" min={28} max={160} required defaultValue={announcement?.barHeight ?? 42} /></Field>
             <Field label="Padding"><Input name="padding" type="number" min={0} max={48} required defaultValue={announcement?.padding ?? 16} /></Field>
             <Field label="Custom background graphic" wide><Input name="backgroundImage" type="file" accept="image/png,image/jpeg,image/webp,image/gif" /><small className="field-hint">PNG, JPG, GIF, or WebP up to 4 MB.</small></Field>
-            <Field label="Start date"><Input name="startAt" type="datetime-local" defaultValue={dateTimeLocal(announcement?.startAt)} /></Field>
-            <Field label="End date"><Input name="endAt" type="datetime-local" defaultValue={dateTimeLocal(announcement?.endAt)} /></Field>
+            <Field label="Start date"><DateTimeInput name="startAt" type="datetime-local" defaultValue={dateTimeLocal(announcement?.startAt)} /></Field>
+            <Field label="End date"><DateTimeInput name="endAt" type="datetime-local" defaultValue={dateTimeLocal(announcement?.endAt)} /></Field>
             <label className="catalog-check"><input name="enabled" type="checkbox" defaultChecked={announcement?.enabled ?? true} /><span>Enabled</span></label>
             <label className="catalog-check"><input name="showCategory" type="checkbox" defaultChecked={announcement?.showCategory ?? false} /><span>Show category label in the reel</span></label>
             <label className="catalog-check"><input name="backgroundTransparent" type="checkbox" defaultChecked={announcement?.backgroundTransparent ?? false} /><span>Use transparent background color</span></label>

@@ -3,6 +3,15 @@ export const stagePerformanceTypes = ["artist", "dj"] as const;
 export const stagePlacements = ["none", "featured", "latest", "trending", "most_watched", "wadadli", "caribbean"] as const;
 export const stageFeeStatuses = ["not_required", "free_promotion", "discounted", "waived", "pending", "paid"] as const;
 
+export function normalizeStageSlug(value: string) {
+  return formatStageSlug(value, true);
+}
+
+export function formatStageSlug(value: string, trimTrailing = false) {
+  const formatted = value.toLowerCase().trimStart().replace(/[^a-z0-9\s-]/g, "").replace(/[\s-]+/g, "-").replace(/^-+/, "");
+  return (trimTrailing ? formatted.replace(/-+$/, "") : formatted).slice(0, 90);
+}
+
 export type StageStatus = typeof stageStatuses[number];
 export type StagePerformanceType = typeof stagePerformanceTypes[number];
 export type StagePlacement = typeof stagePlacements[number];
