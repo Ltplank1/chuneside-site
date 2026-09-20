@@ -18,6 +18,7 @@ export async function GET() {
     const db = getDb();
     const gate = await getAdminGate();
     const audience = gate.status === "allowed" ? "admin" : "public";
+    const lyricsOn = await isFeatureAvailable(db, "lyrics_karaoke", "public");
 
     if (!await isFeatureAvailable(db, "database_catalogue", audience)) {
       return catalogResponse({ tracks: demoTracks, source: "demo" });
@@ -38,6 +39,8 @@ export async function GET() {
       audioUrl: releases.audioUrl,
       coverImageUrl: releases.coverImageUrl,
       musicVideoUrl: releases.musicVideoUrl,
+      lyricsText: releases.lyricsText,
+      lyricsEnabled: releases.lyricsEnabled,
       colors: releases.accentGradient,
       mark: releases.shortMark,
     }).from(releases)
@@ -67,6 +70,7 @@ export async function GET() {
       audioUrl: row.audioUrl,
       coverImageUrl: row.coverImageUrl,
       musicVideoUrl: row.musicVideoUrl,
+      lyrics: lyricsOn && row.lyricsEnabled && row.lyricsRightsConfirmed ? row.lyricsText : null,
       colors: row.colors ?? "from-[#242832] via-[#171a21] to-[#090a0d]",
       mark: row.mark ?? row.artist.slice(0, 2).toUpperCase(),
       loves: 0,

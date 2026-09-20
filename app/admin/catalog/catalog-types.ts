@@ -44,6 +44,9 @@ export type AdminRelease = {
   rightsConfirmed: boolean;
   aiDisclosure: string | null;
   submissionNotes: string | null;
+  lyricsText: string | null;
+  lyricsRightsConfirmed: boolean;
+  lyricsEnabled: boolean;
   reviewNote: string | null;
   reviewedAt: string | null;
   reviewedBy: string | null;

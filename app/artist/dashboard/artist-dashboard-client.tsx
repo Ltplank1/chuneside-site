@@ -50,6 +50,8 @@ type WorkspaceRelease = {
   radioReadyConfirmed: boolean;
   aiDisclosure: string | null;
   submissionNotes: string | null;
+  lyricsText: string | null;
+  lyricsRightsConfirmed: boolean;
   reviewNote: string | null;
   artistCredits?: Array<{ artistProfileId: string; role: "featured" | "co_artist" }>;
   additionalCredits?: Array<{ role: string; contributorName: string; artistProfileId: string | null }>;
@@ -170,6 +172,8 @@ export function ArtistDashboardClient({ displayName, profiles, studioMembers, ai
         rightsConfirmed: form.get("rightsConfirmed") === "on",
         aiDisclosure: form.get("aiDisclosure"),
         submissionNotes: form.get("submissionNotes"),
+        lyricsText: form.get("lyricsText"),
+        lyricsRightsConfirmed: form.get("lyricsRightsConfirmed") === "on",
         artistCredits: parseCredits(form.get("artistCredits")),
         additionalCredits: parseAdditionalCredits(form.get("additionalCredits")),
       }),
@@ -345,6 +349,8 @@ export function ArtistDashboardClient({ displayName, profiles, studioMembers, ai
         rightsConfirmed: form.get("rightsConfirmed") === "on",
         aiDisclosure: form.get("aiDisclosure"),
         submissionNotes: form.get("submissionNotes"),
+        lyricsText: form.get("lyricsText"),
+        lyricsRightsConfirmed: form.get("lyricsRightsConfirmed") === "on",
         artistCredits: parseCredits(form.get("artistCredits")),
         additionalCredits: parseAdditionalCredits(form.get("additionalCredits")),
       }),
@@ -643,9 +649,11 @@ function ReleaseDialog({ open, profiles, busy, error, onClose, onSubmit }: {
             <SharedDurationField />
             <Field label="AI use disclosure"><Textarea name="aiDisclosure" maxLength={1000} placeholder="Required for AI-assisted releases: describe the tools used and what they contributed." /></Field>
             <Field label="Submission notes"><Textarea name="submissionNotes" maxLength={1000} placeholder="Optional context for the ChuneSide review team." /></Field>
+            <Field label="Lyrics (optional)" wide><Textarea name="lyricsText" maxLength={20000} placeholder="Paste lyrics here if you have permission to display them." /></Field>
           </div>
           <ReleaseCreditsFields />
           <label className="catalog-check rights-confirmation"><input name="rightsConfirmed" type="checkbox" required /><span>I confirm I own or have permission to use the music, samples, artwork, voices, and likenesses in this submission.</span></label>
+          <label className="catalog-check rights-confirmation"><input name="lyricsRightsConfirmed" type="checkbox" /><span>If lyrics are included, I confirm I own or have permission to display them.</span></label>
           {error && <p className="catalog-editor-error" role="alert">{error}</p>}
           <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Send />} Submit for review</Button></DialogFooter>
         </form>
@@ -671,10 +679,12 @@ function ReleaseCorrectionDialog({ release, busy, error, onClose, onSubmit }: { 
           <SharedDurationField value={release.durationSeconds} />
           <Field label="AI use disclosure"><Textarea name="aiDisclosure" maxLength={1000} defaultValue={release.aiDisclosure ?? ""} /></Field>
           <Field label="Submission notes"><Textarea name="submissionNotes" maxLength={1000} defaultValue={release.submissionNotes ?? ""} /></Field>
+          <Field label="Lyrics (optional)" wide><Textarea name="lyricsText" maxLength={20000} defaultValue={release.lyricsText ?? ""} placeholder="Paste lyrics here if you have permission to display them." /></Field>
         </div>
         <ReleaseCreditsFields initialArtistCredits={release.artistCredits} initialAdditionalCredits={release.additionalCredits} />
         <p className="radio-ready-copy"><strong>Create freely. Submit clean. Get discovered.</strong> For ChuneSide, resubmit the clean radio-ready version prepared for opportunity.</p>
         <label className="catalog-check rights-confirmation"><input name="rightsConfirmed" type="checkbox" required defaultChecked={release.rightsConfirmed} /><span>I confirm I own or have permission to use the music, samples, artwork, voices, and likenesses in this submission.</span></label>
+        <label className="catalog-check rights-confirmation"><input name="lyricsRightsConfirmed" type="checkbox" defaultChecked={release.lyricsRightsConfirmed} /><span>I confirm I own or have permission to display these lyrics.</span></label>
         {error && <p className="catalog-editor-error" role="alert">{error}</p>}
         <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Send />} Return to review</Button></DialogFooter>
       </form>}

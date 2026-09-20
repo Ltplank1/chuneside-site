@@ -24,11 +24,16 @@ const inputSchema = z.object({
   rightsConfirmed: z.literal(true, { message: "You must confirm that you hold the required rights." }),
   aiDisclosure: z.string().trim().max(1000).optional(),
   submissionNotes: z.string().trim().max(1000).optional(),
+  lyricsText: z.string().trim().max(20000).optional(),
+  lyricsRightsConfirmed: z.boolean().default(false),
   artistCredits: z.array(z.object({ artistProfileId: z.string().min(1), role: z.enum(["featured", "co_artist"]) })).max(50).default([]),
   additionalCredits: z.array(z.object({ role: z.string().trim().min(1).max(80), contributorName: z.string().trim().min(1).max(160), artistProfileId: z.string().min(1).nullable().optional() })).max(100).default([]),
 }).superRefine((input, context) => {
   if (input.aiClassification !== "human_created" && !input.aiDisclosure) {
     context.addIssue({ code: "custom", path: ["aiDisclosure"], message: "Describe how AI was used in this release." });
+  }
+  if (input.lyricsText && !input.lyricsRightsConfirmed) {
+    context.addIssue({ code: "custom", path: ["lyricsRightsConfirmed"], message: "Confirm that you have permission to display these lyrics." });
   }
 });
 
@@ -69,6 +74,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ re
       rightsConfirmed: parsed.data.rightsConfirmed,
       aiDisclosure: parsed.data.aiDisclosure || null,
       submissionNotes: parsed.data.submissionNotes || null,
+      lyricsText: parsed.data.lyricsText || null,
+      lyricsRightsConfirmed: parsed.data.lyricsRightsConfirmed,
       approvalStatus: "pending",
       publicationStatus: "unpublished",
       publicationAt: null,

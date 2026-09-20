@@ -15,6 +15,7 @@ export type PublicTrack = {
   audioUrl: string | null;
   coverImageUrl: string | null;
   musicVideoUrl?: string | null;
+  lyrics?: string | null;
   colors: string;
   mark: string;
   loves: number;

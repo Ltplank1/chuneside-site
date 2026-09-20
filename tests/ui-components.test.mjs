@@ -581,3 +581,21 @@ test("keeps ChuneSide platform support separate and provider-backed", async () =
   assert.match(adminPage, /Restore defaults/);
   assert.match(home, /\/api\/support/);
 });
+
+test("keeps lyrics optional, rights-confirmed, and isolated from playback", async () => {
+  const [schema, flag, artistRoute, catalogRoute, home, css] = await Promise.all([
+    readFile(path.join(root, "db", "schema.ts"), "utf8"),
+    readFile(path.join(root, "lib", "feature-flags.ts"), "utf8"),
+    readFile(path.join(root, "app", "api", "artist", "releases", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "api", "catalog", "route.ts"), "utf8"),
+    readFile(path.join(root, "app", "page.tsx"), "utf8"),
+    readFile(path.join(root, "app", "lyrics.css"), "utf8"),
+  ]);
+  assert.match(schema, /lyricsText/);
+  assert.match(schema, /lyricsRightsConfirmed/);
+  assert.match(flag, /lyrics_karaoke/);
+  assert.match(artistRoute, /permission to display these lyrics/);
+  assert.match(catalogRoute, /row\.lyricsRightsConfirmed/);
+  assert.match(home, /lyrics-dialog/);
+  assert.match(css, /lyrics-reader/);
+});

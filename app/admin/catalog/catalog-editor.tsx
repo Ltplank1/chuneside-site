@@ -85,6 +85,9 @@ export function CatalogEditor({ editor, artists, ownerAccounts, onClose, onSaved
           publicationStatus: form.get("publicationStatus"),
           publicationAt: form.get("publicationAt"),
           featured: form.get("featured") === "on",
+          lyricsText: form.get("lyricsText"),
+          lyricsRightsConfirmed: form.get("lyricsRightsConfirmed") === "on",
+          lyricsEnabled: form.get("lyricsEnabled") === "on",
           artistCredits,
           additionalCredits,
         };
@@ -189,6 +192,9 @@ function ReleaseFields({ release, artists, artistCredits, setArtistCredits, addi
       <Field label="Approval"><Choice name="approvalStatus" value={release?.approvalStatus ?? "draft"} options={["draft", "pending", "approved", "rejected", "disabled"]} /></Field>
       <Field label="Publication"><Choice name="publicationStatus" value={release?.publicationStatus ?? (release?.approvalStatus === "approved" ? "published" : "unpublished")} options={["unpublished", "scheduled", "published", "archived"]} /></Field>
       <Field label="Publish at"><Input name="publicationAt" type="datetime-local" defaultValue={release?.publicationAt ? new Date(release.publicationAt).toISOString().slice(0, 16) : ""} /></Field>
+      <Field label="Lyrics" wide><Textarea name="lyricsText" maxLength={20000} defaultValue={release?.lyricsText ?? ""} placeholder="Optional lyrics displayed in karaoke mode." /></Field>
+      <label className="catalog-check"><input name="lyricsRightsConfirmed" type="checkbox" defaultChecked={release?.lyricsRightsConfirmed ?? false} /><span>Lyrics display rights confirmed</span></label>
+      <label className="catalog-check"><input name="lyricsEnabled" type="checkbox" defaultChecked={release?.lyricsEnabled ?? true} /><span>Enable lyrics for this release</span></label>
       <label className="catalog-check"><input name="featured" type="checkbox" defaultChecked={release?.featured ?? false} /><span>Featured release</span></label>
     </div>
   );

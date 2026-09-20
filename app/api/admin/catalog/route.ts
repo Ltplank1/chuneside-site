@@ -64,6 +64,9 @@ const releaseInput = z.object({
   publicationStatus: z.enum(["unpublished", "scheduled", "published", "archived"]).optional(),
   publicationAt: optionalDate.optional(),
   featured: z.boolean(),
+  lyricsText: z.string().trim().max(20000).optional(),
+  lyricsRightsConfirmed: z.boolean().default(false),
+  lyricsEnabled: z.boolean().default(true),
   artistCredits: z.array(z.object({ artistProfileId: z.string().min(1), role: z.enum(["featured", "co_artist"]) })).max(50).default([]),
   additionalCredits: z.array(z.object({ role: z.string().trim().min(1).max(80), contributorName: z.string().trim().min(1).max(160), artistProfileId: z.string().min(1).nullable().optional() })).max(100).default([]),
 });
@@ -177,6 +180,9 @@ export async function POST(request: Request) {
       publicationStatus: input.publicationStatus ?? (input.approvalStatus === "approved" ? "published" : "unpublished"),
       publicationAt: input.publicationAt ?? null,
       featured: input.featured,
+      lyricsText: input.lyricsText || null,
+      lyricsRightsConfirmed: input.lyricsRightsConfirmed,
+      lyricsEnabled: input.lyricsEnabled,
       updatedAt: now,
     };
 
