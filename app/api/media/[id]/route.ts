@@ -15,6 +15,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     objectKey: releaseMedia.objectKey,
     originalName: releaseMedia.originalName,
     contentType: releaseMedia.contentType,
+    privateOnly: releaseMedia.privateOnly,
     status: releaseMedia.status,
     releaseStatus: releases.approvalStatus,
     ownerMemberId: artistProfiles.ownerMemberId,
@@ -27,6 +28,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
   const publiclyAvailable = media.status === "ready" && media.releaseStatus === "approved";
   if (!publiclyAvailable) {
+    const user = await getCurrentMemberUser();
+    const ownsMedia = Boolean(user && user.id === media.ownerMemberId);
+    if (!ownsMedia && !await requireAdminUser()) return NextResponse.json({ error: "Media access denied." }, { status: 403 });
+  }
+  if (media.privateOnly) {
     const user = await getCurrentMemberUser();
     const ownsMedia = Boolean(user && user.id === media.ownerMemberId);
     if (!ownsMedia && !await requireAdminUser()) return NextResponse.json({ error: "Media access denied." }, { status: 403 });

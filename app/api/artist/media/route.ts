@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, max, ne } from "drizzle-orm";
 import { getDb } from "@/db";
 import { adminAuditLogs, artistProfiles, releaseMedia, releases } from "@/db/schema";
 import { getArtistWorkspaceAccess } from "@/lib/artist-access";
@@ -41,6 +41,9 @@ export async function POST(request: Request) {
   const detectedDuration = Number(request.headers.get("x-chuneside-duration-seconds") ?? "");
   const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
   const originalName = safeOriginalName(request.headers.get("x-chuneside-original-name"));
+  const audioVariant = request.headers.get("x-chuneside-audio-variant") === "stream" ? "stream" : "master";
+  const sourceMediaId = request.headers.get("x-chuneside-source-media-id");
+  const mp3Acknowledged = request.headers.get("x-chuneside-mp3-acknowledged") === "true";
   if (!releaseId || !["audio", "cover", "video"].includes(String(kind)) || !request.body) {
     return NextResponse.json({ error: "Choose a release and a valid media file." }, { status: 400 });
   }
@@ -54,15 +57,38 @@ export async function POST(request: Request) {
   if (contentLength > mediaRules[mediaKind].maxBytes) {
     return NextResponse.json({ error: mediaKind === "audio" ? "Audio files must be 40 MB or smaller." : mediaKind === "video" ? "Video files must be 100 MB or smaller." : "Cover files must be 8 MB or smaller." }, { status: 400 });
   }
-  const prepared = await prepareMediaStream(request.body, mediaKind, contentType);
+  const prepared = await prepareMediaStream(request.body, mediaKind);
   if (prepared.error) return NextResponse.json({ error: prepared.error }, { status: 400 });
   const validationError = validateMediaFile(mediaKind, { size: prepared.size, type: contentType }, prepared.header);
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
+  if (mediaKind === "audio" && contentType === "audio/mpeg" && !sourceMediaId && !mp3Acknowledged) {
+    return NextResponse.json({ error: "Acknowledge that MP3 quality cannot be restored before uploading an MP3." }, { status: 400 });
+  }
+  if (mediaKind === "audio" && contentType === "audio/mpeg" && !is320KbpsMp3(prepared.header)) {
+    return NextResponse.json({ error: "MP3 uploads must be 320 kbps. Upload a WAV master for conversion instead." }, { status: 400 });
+  }
+  if (mediaKind === "audio" && audioVariant === "stream" && contentType !== "audio/mpeg") {
+    return NextResponse.json({ error: "A streaming MP3 must be generated from an uploaded WAV master." }, { status: 400 });
+  }
+  if (mediaKind === "audio" && audioVariant === "master" && contentType !== "audio/wav" && contentType !== "audio/x-wav" && contentType !== "audio/mpeg") {
+    return NextResponse.json({ error: "Audio masters must be WAV or an acknowledged 320 kbps MP3." }, { status: 400 });
+  }
 
   const [ownedRelease] = await db.select({ id: releases.id, status: releases.approvalStatus }).from(releases)
     .innerJoin(artistProfiles, eq(releases.artistProfileId, artistProfiles.id))
     .where(and(eq(releases.id, releaseId), eq(artistProfiles.ownerMemberId, access.user.id))).limit(1);
   if (!ownedRelease) return NextResponse.json({ error: "That release is not linked to your artist account." }, { status: 403 });
+  if (mediaKind === "audio" && audioVariant === "stream" && sourceMediaId) {
+    const [source] = await db.select({ id: releaseMedia.id }).from(releaseMedia).where(and(
+      eq(releaseMedia.id, sourceMediaId),
+      eq(releaseMedia.releaseId, releaseId),
+      eq(releaseMedia.kind, "audio"),
+      eq(releaseMedia.variant, "master"),
+      eq(releaseMedia.privateOnly, true),
+      ne(releaseMedia.status, "deleted"),
+    )).limit(1);
+    if (!source) return NextResponse.json({ error: "The streaming MP3 must be linked to your WAV master." }, { status: 400 });
+  }
   if (ownedRelease.status === "approved" || ownedRelease.status === "disabled") {
     return NextResponse.json({ error: "Published or disabled release media cannot be replaced here." }, { status: 409 });
   }
@@ -90,13 +116,24 @@ export async function POST(request: Request) {
     const previous = await db.select().from(releaseMedia).where(and(
       eq(releaseMedia.releaseId, releaseId),
       eq(releaseMedia.kind, mediaKind),
+      ...(mediaKind === "audio" ? [eq(releaseMedia.variant, audioVariant)] : []),
       ne(releaseMedia.status, "deleted"),
     ));
+    const [latestVersion] = await db.select({ value: max(releaseMedia.version) }).from(releaseMedia).where(and(
+      eq(releaseMedia.releaseId, releaseId),
+      eq(releaseMedia.kind, mediaKind),
+      ...(mediaKind === "audio" ? [eq(releaseMedia.variant, audioVariant)] : []),
+    ));
+    const version = (latestVersion?.value ?? 0) + 1;
     await db.insert(releaseMedia).values({
       id,
       releaseId,
       uploaderMemberId: access.user.id,
       kind: mediaKind,
+      variant: mediaKind === "audio" ? audioVariant : "master",
+      privateOnly: mediaKind === "audio" && audioVariant === "master",
+      sourceMediaId: mediaKind === "audio" && audioVariant === "stream" ? sourceMediaId : null,
+      version,
       objectKey,
       originalName: originalName || `${mediaKind}.${extensions[contentType]}`,
       contentType,
@@ -108,9 +145,10 @@ export async function POST(request: Request) {
     await db.update(releaseMedia).set({ status: "deleted", updatedAt: now }).where(and(
       eq(releaseMedia.releaseId, releaseId),
       eq(releaseMedia.kind, mediaKind),
+      ...(mediaKind === "audio" ? [eq(releaseMedia.variant, audioVariant)] : []),
       ne(releaseMedia.id, id),
     ));
-    await Promise.all(previous.map((item) => bucket.delete(item.objectKey)));
+    await Promise.all(mediaKind === "audio" ? [] : previous.map((item) => bucket.delete(item.objectKey)));
     await db.update(releases).set({
       explicitStatus: "clean",
       radioReadyConfirmed: true,
@@ -134,11 +172,11 @@ export async function POST(request: Request) {
   }
 }
 
-async function prepareMediaStream(body: ReadableStream<Uint8Array>, kind: MediaKind, contentType: string) {
+async function prepareMediaStream(body: ReadableStream<Uint8Array>, kind: MediaKind) {
   const reader = body.getReader();
   const initial: Uint8Array[] = [];
   let initialSize = 0;
-  while (initialSize < 16) {
+  while (initialSize < (kind === "audio" ? 65536 : 16)) {
     const next = await reader.read();
     if (next.done) break;
     initial.push(next.value);
@@ -146,7 +184,7 @@ async function prepareMediaStream(body: ReadableStream<Uint8Array>, kind: MediaK
   }
   if (!initialSize) return { error: "Choose a release and a valid media file." as const };
 
-  const header = new Uint8Array(Math.min(initialSize, 16));
+  const header = new Uint8Array(Math.min(initialSize, kind === "audio" ? 65536 : 16));
   let headerOffset = 0;
   for (const chunk of initial) {
     const available = Math.min(chunk.byteLength, header.byteLength - headerOffset);
@@ -183,6 +221,18 @@ async function prepareMediaStream(body: ReadableStream<Uint8Array>, kind: MediaK
       return total;
     },
   };
+}
+
+function is320KbpsMp3(header: Uint8Array) {
+  const limit = Math.min(header.length - 4, 65536);
+  for (let offset = 0; offset < limit; offset += 1) {
+    if (header[offset] !== 0xff || (header[offset + 1] & 0xe0) !== 0xe0) continue;
+    const version = (header[offset + 1] >> 3) & 0x03;
+    const layer = (header[offset + 1] >> 1) & 0x03;
+    const bitrateIndex = (header[offset + 2] >> 4) & 0x0f;
+    if (version === 3 && layer === 1 && bitrateIndex === 14) return true;
+  }
+  return false;
 }
 
 function safeOriginalName(value: string | null) {

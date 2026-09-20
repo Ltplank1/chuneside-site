@@ -166,6 +166,10 @@ export const releaseMedia = sqliteTable("release_media", {
   releaseId: text("release_id").notNull().references(() => releases.id, { onDelete: "cascade" }),
   uploaderMemberId: text("uploader_member_id").notNull().references(() => members.id, { onDelete: "restrict" }),
   kind: text("kind", { enum: ["audio", "cover", "video"] }).notNull(),
+  variant: text("variant", { enum: ["master", "stream"] }).notNull().default("master"),
+  privateOnly: integer("private_only", { mode: "boolean" }).notNull().default(false),
+  sourceMediaId: text("source_media_id"),
+  version: integer("version").notNull().default(1),
   objectKey: text("object_key").notNull(),
   originalName: text("original_name").notNull(),
   contentType: text("content_type").notNull(),
@@ -176,6 +180,7 @@ export const releaseMedia = sqliteTable("release_media", {
 }, (table) => [
   uniqueIndex("idx_release_media_object_key").on(table.objectKey),
   index("idx_release_media_release_kind").on(table.releaseId, table.kind, table.status),
+  index("idx_release_media_release_variant").on(table.releaseId, table.kind, table.variant, table.status),
   index("idx_release_media_uploader").on(table.uploaderMemberId),
 ]);
 

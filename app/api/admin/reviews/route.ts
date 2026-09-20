@@ -70,11 +70,12 @@ export async function POST(request: Request) {
   if (parsed.data.decision === "approve") {
     const blockers = releaseReviewBlockers(release);
     if (await isFeatureAvailable(db, "artist_media_uploads", "admin")) {
-      const media = await db.select({ id: releaseMedia.id, kind: releaseMedia.kind }).from(releaseMedia).where(and(
+      const media = await db.select({ id: releaseMedia.id, kind: releaseMedia.kind, variant: releaseMedia.variant }).from(releaseMedia).where(and(
         eq(releaseMedia.releaseId, release.id),
         ne(releaseMedia.status, "deleted"),
       ));
-      if (!media.some((item) => item.kind === "audio")) blockers.push("An audio master is required.");
+      if (!media.some((item) => item.kind === "audio" && (item.variant === "stream" || item.variant === "master"))) blockers.push("An audio master is required.");
+      if (media.some((item) => item.kind === "audio" && item.variant === "master") && !media.some((item) => item.kind === "audio" && item.variant === "stream")) blockers.push("A streaming MP3 must be generated from the WAV master before approval.");
       if (!media.some((item) => item.kind === "cover")) blockers.push("Cover artwork is required.");
     }
     if (blockers.length) return NextResponse.json({ error: blockers[0], blockers }, { status: 400 });
@@ -88,9 +89,9 @@ export async function POST(request: Request) {
   }
 
   const media = parsed.data.decision === "approve"
-    ? await db.select({ id: releaseMedia.id, kind: releaseMedia.kind }).from(releaseMedia).where(and(eq(releaseMedia.releaseId, release.id), ne(releaseMedia.status, "deleted")))
+    ? await db.select({ id: releaseMedia.id, kind: releaseMedia.kind, variant: releaseMedia.variant }).from(releaseMedia).where(and(eq(releaseMedia.releaseId, release.id), ne(releaseMedia.status, "deleted")))
     : [];
-  const audio = media.find((item) => item.kind === "audio");
+  const audio = media.find((item) => item.kind === "audio" && item.variant === "stream") ?? media.find((item) => item.kind === "audio");
   const cover = media.find((item) => item.kind === "cover");
   const video = media.find((item) => item.kind === "video");
 

@@ -31,7 +31,7 @@ export function validateMediaFile(kind: MediaKind, file: { size: number; type: s
     (file.type === "image/webp" && ascii.slice(0, 4) === "RIFF" && ascii.slice(8, 12) === "WEBP");
   const audioSignature =
     (file.type === "audio/mpeg" && (ascii.slice(0, 3) === "ID3" || (header[0] === 0xff && (header[1] & 0xe0) === 0xe0))) ||
-    (["audio/wav", "audio/x-wav"].includes(file.type) && ascii.slice(0, 4) === "RIFF" && ascii.slice(8, 12) === "WAVE") ||
+    (["audio/wav", "audio/x-wav"].includes(file.type) && isRealWav(header)) ||
     (file.type === "audio/mp4" && ascii.slice(4, 8) === "ftyp") ||
     (file.type === "audio/ogg" && ascii.slice(0, 4) === "OggS");
   const videoSignature =
@@ -41,6 +41,29 @@ export function validateMediaFile(kind: MediaKind, file: { size: number; type: s
   if (kind === "audio") return audioSignature ? null : "The audio file contents do not match its type.";
   if (kind === "video") return videoSignature ? null : "The video file contents do not match its type.";
   return imageSignature ? null : `The ${kind === "profile" ? "profile photo" : "cover"} file contents do not match its type.`;
+}
+
+function isRealWav(header: Uint8Array) {
+  const ascii = String.fromCharCode(...header);
+  if (ascii.slice(0, 4) !== "RIFF" || ascii.slice(8, 12) !== "WAVE") return false;
+  let hasFormat = false;
+  let hasData = false;
+  for (let offset = 12; offset + 8 <= header.length;) {
+    const chunkSize = header[offset + 4] | (header[offset + 5] << 8) | (header[offset + 6] << 16) | (header[offset + 7] << 24);
+    if (chunkSize < 0) return false;
+    const chunk = ascii.slice(offset, offset + 4);
+    if (chunk === "fmt " && chunkSize >= 16) {
+      if (offset + 8 + chunkSize > header.length) return false;
+      const format = header[offset + 8] | (header[offset + 9] << 8);
+      const channels = header[offset + 10] | (header[offset + 11] << 8);
+      const sampleRate = header[offset + 12] | (header[offset + 13] << 8) | (header[offset + 14] << 16) | (header[offset + 15] << 24);
+      hasFormat = [1, 3, 0xfffe].includes(format) && channels > 0 && sampleRate > 0;
+    }
+    if (chunk === "data" && chunkSize > 0) hasData = true;
+    if (hasFormat && hasData) return true;
+    offset += 8 + chunkSize + (chunkSize % 2);
+  }
+  return false;
 }
 
 function mediaLabel(kind: MediaKind) {

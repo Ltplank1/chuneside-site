@@ -258,8 +258,11 @@ test("validates uploaded media by size, type, and file signature", async () => {
   const mp3Header = Uint8Array.from([0x49, 0x44, 0x33, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   const pngHeader = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0]);
   const webmHeader = Uint8Array.from([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const wavHeader = new Uint8Array(48);
+  wavHeader.set([...Buffer.from("RIFF"), 0, 0, 0, 0, ...Buffer.from("WAVEfmt "), 16, 0, 0, 0, 1, 0, 1, 0, 0x44, 0xac, 0, 0, 0x88, 0x58, 1, 0, 2, 0, 16, 0, ...Buffer.from("data"), 4, 0, 0, 0], 0);
 
   assert.equal(validateMediaFile("audio", { size: 1024, type: "audio/mpeg" }, mp3Header), null);
+  assert.equal(validateMediaFile("audio", { size: 1024, type: "audio/wav" }, wavHeader), null);
   assert.equal(validateMediaFile("cover", { size: 1024, type: "image/png" }, pngHeader), null);
   assert.equal(validateMediaFile("video", { size: 1024, type: "video/webm" }, webmHeader), null);
   assert.equal(validateMediaFile("video", { size: 1024, type: "video/webm" }, mp3Header), "The video file contents do not match its type.");
@@ -269,6 +272,12 @@ test("validates uploaded media by size, type, and file signature", async () => {
   assert.deepEqual(parseByteRange("bytes=-250", 1000), { offset: 750, length: 250 });
   assert.deepEqual(parseByteRange("bytes=900-", 1000), { offset: 900, length: 100 });
   assert.equal(parseByteRange("bytes=1000-1001", 1000), null);
+  const artistMedia = await readFile(path.join(root, "app", "api", "artist", "media", "route.ts"), "utf8");
+  const dashboard = await readFile(path.join(root, "app", "artist", "dashboard", "artist-dashboard-client.tsx"), "utf8");
+  assert.match(artistMedia, /x-chuneside-audio-variant/);
+  assert.match(artistMedia, /privateOnly/);
+  assert.match(dashboard, /mp3QualityAcknowledged/);
+  assert.match(dashboard, /encodeWavToMp3/);
 });
 
 test("provisions the D1 member record after Supabase authentication completes", async () => {

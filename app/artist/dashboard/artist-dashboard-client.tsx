@@ -55,6 +55,7 @@ type WorkspaceMedia = {
   id: string;
   releaseId: string;
   kind: "audio" | "cover" | "video";
+  variant?: "master" | "stream";
   originalName: string;
   sizeBytes: number;
   status: "pending" | "ready" | "rejected" | "deleted";
@@ -187,6 +188,12 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
     }
     const files = (["audio", "cover", "video"] as const).map((kind) => ({ kind, file: form.get(kind) })).filter((item): item is { kind: "audio" | "cover" | "video"; file: File } => item.file instanceof File && item.file.size > 0);
     if (!files.length) { setError("Choose an audio master, cover artwork, or release video."); return; }
+    const audioFile = files.find((item) => item.kind === "audio")?.file;
+    const isMp3 = Boolean(audioFile && (audioFile.type === "audio/mpeg" || audioFile.name.toLowerCase().endsWith(".mp3")));
+    if (isMp3 && form.get("mp3QualityAcknowledged") !== "on") {
+      setError("Acknowledge that MP3 quality cannot be restored before uploading an MP3.");
+      return;
+    }
 
     setBusy(true);
     setError("");
@@ -195,34 +202,22 @@ export function ArtistDashboardClient({ displayName, profiles, aiPolicies, initi
       // requests for Server Actions and applies its small action-body limit before an
       // API route can receive the file. The endpoint still authenticates every upload
       // and streams the bytes privately to R2.
-      let response: Response;
       let detectedDuration: number | null = null;
       try {
         detectedDuration = item.kind === "audio" ? await detectAudioDuration(item.file) : null;
-        response = await fetch("/api/artist/media", {
-          method: "POST",
-          headers: {
-            "content-type": item.file.type,
-            "x-chuneside-release-id": releaseId,
-            "x-chuneside-media-kind": item.kind,
-            "x-chuneside-original-name": encodeURIComponent(item.file.name),
-            "x-chuneside-radio-ready-confirmed": "true",
-            ...(detectedDuration ? { "x-chuneside-duration-seconds": String(detectedDuration) } : {}),
-          },
-          body: item.file,
-        });
-      } catch {
-        setError(`${item.kind} upload could not reach ChuneSide. Please try again.`);
+        const isWav = item.kind === "audio" && (item.file.type === "audio/wav" || item.file.type === "audio/x-wav" || item.file.name.toLowerCase().endsWith(".wav"));
+        const masterData = await uploadArtistMedia(item.file, releaseId, item.kind, detectedDuration, isWav ? { audioVariant: "master" } : { audioVariant: item.kind === "audio" ? "stream" : undefined, mp3Acknowledged: isMp3 });
+        setMediaRows((current) => [...current.filter((media) => media.releaseId !== releaseId || media.kind !== item.kind || (item.kind === "audio" && media.variant !== "stream")), masterData.media]);
+        if (item.kind === "audio" && isWav) {
+          const mp3 = await encodeWavToMp3(item.file);
+          const streamData = await uploadArtistMedia(mp3, releaseId, "audio", detectedDuration, { audioVariant: "stream", sourceMediaId: masterData.media.id });
+          setMediaRows((current) => [...current.filter((media) => media.releaseId !== releaseId || media.kind !== "audio" || media.variant !== "stream"), streamData.media]);
+        }
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : `${item.kind} upload or WAV conversion failed. Please try again.`);
         setBusy(false);
         return;
       }
-      const data = await response.json().catch(() => ({})) as { media?: WorkspaceMedia; error?: string };
-      if (!response.ok || !data.media) {
-        setError(data.error ?? `${item.kind} upload failed.`);
-        setBusy(false);
-        return;
-      }
-      setMediaRows((current) => [...current.filter((media) => media.releaseId !== releaseId || media.kind !== item.kind), data.media as WorkspaceMedia]);
       if (item.kind === "audio") {
         if (detectedDuration) setReleaseRows((current) => current.map((release) => release.id === releaseId ? { ...release, durationSeconds: detectedDuration } : release));
       }
@@ -565,10 +560,11 @@ function MediaDialog({ open, releases, busy, error, onClose, onSubmit }: { open:
           <Field label="Release"><Select name="releaseId" options={releases.map((release) => [release.id, release.title])} /></Field>
           <p className="radio-ready-copy"><strong>Create freely. Submit clean. Get discovered.</strong> ChuneSide is a launch pad for radio, DJs, promoters, and bigger stages. Your submitted files should be the clean, radio-ready version.</p>
           <div className="catalog-form-grid">
-            <Field label="Audio master (40 MB max)"><Input name="audio" type="file" accept="audio/mpeg,audio/wav,audio/mp4,audio/ogg" /></Field>
+            <Field label="Audio master (WAV preferred, 40 MB max)"><Input name="audio" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,.mp3,.wav" /></Field>
             <Field label="Cover artwork (8 MB max)"><Input name="cover" type="file" accept="image/jpeg,image/png,image/webp" /></Field>
             <Field label="Release video (optional, 100 MB max)"><Input name="video" type="file" accept="video/mp4,video/webm,video/quicktime" /></Field>
           </div>
+          <label className="catalog-check rights-confirmation"><input name="mp3QualityAcknowledged" type="checkbox" /><span>I understand that MP3 quality cannot be restored. Use MP3 only when a WAV master is unavailable.</span></label>
           <label className="catalog-check rights-confirmation"><input name="radioReadyConfirmed" type="checkbox" required /><span>I confirm these files are the clean, radio-ready version prepared for radio, DJs, promoters, and bigger stages.</span></label>
           {error && <p className="catalog-editor-error" role="alert">{error}</p>}
           <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy || !releases.length}>{busy ? <LoaderCircle className="catalog-spinner" /> : <Upload />} Upload media</Button></DialogFooter>
@@ -739,8 +735,66 @@ function formatDuration(totalSeconds: number) {
   return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
 }
 
+async function uploadArtistMedia(file: File, releaseId: string, kind: "audio" | "cover" | "video", durationSeconds: number | null, options: { audioVariant?: "master" | "stream"; sourceMediaId?: string; mp3Acknowledged?: boolean }) {
+  const contentType = file.type || (file.name.toLowerCase().endsWith(".wav") ? "audio/wav" : file.name.toLowerCase().endsWith(".mp3") ? "audio/mpeg" : "");
+  let response: Response;
+  try {
+    response = await fetch("/api/artist/media", {
+      method: "POST",
+      headers: {
+        "content-type": contentType,
+        "x-chuneside-release-id": releaseId,
+        "x-chuneside-media-kind": kind,
+        "x-chuneside-original-name": encodeURIComponent(file.name),
+        "x-chuneside-radio-ready-confirmed": "true",
+        ...(durationSeconds ? { "x-chuneside-duration-seconds": String(durationSeconds) } : {}),
+        ...(options.audioVariant ? { "x-chuneside-audio-variant": options.audioVariant } : {}),
+        ...(options.sourceMediaId ? { "x-chuneside-source-media-id": options.sourceMediaId } : {}),
+        ...(options.mp3Acknowledged ? { "x-chuneside-mp3-acknowledged": "true" } : {}),
+      },
+      body: file,
+    });
+  } catch {
+    throw new Error(`${kind} upload could not reach ChuneSide.`);
+  }
+  const data = await response.json().catch(() => ({})) as { media?: WorkspaceMedia; error?: string };
+  if (!response.ok || !data.media) throw new Error(data.error ?? `${kind} upload failed.`);
+  return { media: data.media };
+}
+
+async function encodeWavToMp3(file: File) {
+  const audioContext = new AudioContext();
+  try {
+    const decoded = await audioContext.decodeAudioData(await file.arrayBuffer());
+    const lame = await import("lamejs");
+    const channels = Math.min(decoded.numberOfChannels, 2);
+    const encoder = new lame.Mp3Encoder(channels, decoded.sampleRate, 320);
+    const left = floatToInt16(decoded.getChannelData(0));
+    const right = channels === 2 ? floatToInt16(decoded.getChannelData(1)) : undefined;
+    const parts: BlobPart[] = [];
+    for (let offset = 0; offset < left.length; offset += 1152) {
+      const encoded = encoder.encodeBuffer(left.subarray(offset, offset + 1152), right?.subarray(offset, offset + 1152));
+      if (encoded.length) parts.push(Uint8Array.from(encoded));
+    }
+    const tail = encoder.flush();
+    if (tail.length) parts.push(Uint8Array.from(tail));
+    return new File(parts, file.name.replace(/\.wav$/i, ".mp3"), { type: "audio/mpeg" });
+  } finally {
+    await audioContext.close();
+  }
+}
+
+function floatToInt16(samples: Float32Array) {
+  const output = new Int16Array(samples.length);
+  for (let index = 0; index < samples.length; index += 1) {
+    const sample = Math.max(-1, Math.min(1, samples[index]));
+    output[index] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+  }
+  return output;
+}
+
 async function detectAudioDuration(file: File) {
-  if (!file.type.startsWith("audio/")) return null;
+  if (!file.type.startsWith("audio/") && !/\.(wav|mp3|m4a|ogg)$/i.test(file.name)) return null;
   const url = URL.createObjectURL(file);
   try {
     const duration = await new Promise<number>((resolve) => {
