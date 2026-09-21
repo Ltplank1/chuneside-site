@@ -430,7 +430,7 @@ test("keeps media on demand and public reads bounded by browser caching", async 
 });
 
 test("keeps floating advertising isolated from music playback and rankings", async () => {
-  const [schema, migration, player, eligible, events, component, styles, admin] = await Promise.all([
+  const [schema, migration, player, eligible, events, component, styles, admin, mediaUpload] = await Promise.all([
     readFile(path.join(root, "db", "schema.ts"), "utf8"),
     readFile(path.join(root, "drizzle", "0016_floating_video_ads.sql"), "utf8"),
     readFile(path.join(root, "app", "page.tsx"), "utf8"),
@@ -439,6 +439,7 @@ test("keeps floating advertising isolated from music playback and rankings", asy
     readFile(path.join(root, "app", "components", "floating-video-ad.tsx"), "utf8"),
     readFile(path.join(root, "app", "floating-ad.css"), "utf8"),
     readFile(path.join(root, "app", "admin", "advertising", "advertising-client.tsx"), "utf8"),
+    readFile(path.join(root, "app", "api", "admin", "advertising", "media", "route.ts"), "utf8"),
   ]);
   assert.match(schema, /export const adCampaigns/);
   assert.match(schema, /export const adEvents/);
@@ -447,16 +448,25 @@ test("keeps floating advertising isolated from music playback and rankings", asy
   assert.match(eligible, /rotationWeight/);
   assert.match(events, /eventType/);
   assert.match(component, /videoRef\.current\.muted = true/);
-  assert.match(component, /preload="none"/);
+  assert.match(component, /preload="metadata"/);
+  assert.match(component, /10_000/);
   assert.match(admin, /aria-label="Admin ad preview"/);
   assert.match(admin, /adminPreview=1/);
+  assert.match(admin, /onChange=\{\(event\) => setPreviewVideoFile/);
+  assert.match(admin, /function useObjectUrl/);
   assert.match(player, /<FloatingVideoAd enabled=\{featureOn\("advertising"/);
   assert.match(styles, /floating-video-ad-exiting/);
   assert.match(styles, /aspect-ratio:16\/9/);
   assert.match(admin, /Save campaign/);
   assert.match(admin, /Video \(\.mp4\/\.webm\)/);
   assert.match(admin, /Delivery diagnostics/);
+  assert.match(admin, /body: file/);
+  assert.match(mediaUpload, /FixedLengthStream/);
+  assert.match(mediaUpload, /request\.body/);
+  assert.match(mediaUpload, /stored\.size !== totalSize/);
   assert.match(eligible, /manualOverride/);
+  assert.match(eligible, /campaign\.manualOverride === "on"/);
+  assert.match(eligible, /dismissible: false/);
 });
 
 test("classifies AI releases for configurable upload limits", async () => {

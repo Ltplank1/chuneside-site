@@ -40,6 +40,7 @@ export async function GET(request: Request) {
   const ids = usable.map((campaign) => campaign.id);
   const recent = await db.select({ campaignId: adEvents.campaignId, eventType: adEvents.eventType, visitorKeyHash: adEvents.visitorKeyHash, sessionKeyHash: adEvents.sessionKeyHash, occurredAt: adEvents.occurredAt }).from(adEvents).where(and(inArray(adEvents.campaignId, ids), gte(adEvents.occurredAt, new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000))));
   const available = usable.filter((campaign) => {
+    if (campaign.manualOverride === "on") return true;
     const matching = recent.filter((event) => event.campaignId === campaign.id);
     const visitorCount = matching.filter((event) => event.visitorKeyHash === visitorHash && event.eventType === "impression" && event.occurredAt >= new Date(now.getTime() - campaign.frequencyCapWindowSeconds * 1000)).length;
     const sessionCount = matching.filter((event) => event.sessionKeyHash === sessionHash && event.eventType === "impression").length;
@@ -49,5 +50,5 @@ export async function GET(request: Request) {
   const totalWeight = available.reduce((sum, campaign) => sum + campaign.rotationWeight, 0);
   let pick = Math.random() * totalWeight;
   const selected = available.find((campaign) => { pick -= campaign.rotationWeight; return pick <= 0; }) ?? available[0];
-  return NextResponse.json({ campaign: { id: selected.id, sponsorName: selected.sponsorName, position: selected.position, mobileMode: selected.mobileMode, maxWidth: selected.maxWidth, clickUrl: selected.clickUrl, dismissible: selected.dismissible, videoUrl: `/api/ads/media/${selected.id}/video`, posterUrl: selected.posterObjectKey ? `/api/ads/media/${selected.id}/poster` : null } }, { headers: { "cache-control": "private, max-age=15" } });
+  return NextResponse.json({ campaign: { id: selected.id, sponsorName: selected.sponsorName, position: selected.position, mobileMode: selected.mobileMode, maxWidth: selected.maxWidth, clickUrl: selected.clickUrl, dismissible: false, videoUrl: `/api/ads/media/${selected.id}/video`, posterUrl: selected.posterObjectKey ? `/api/ads/media/${selected.id}/poster` : null } }, { headers: { "cache-control": "private, no-store" } });
 }
