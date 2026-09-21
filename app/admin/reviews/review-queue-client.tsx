@@ -32,6 +32,7 @@ type ReviewRelease = {
 export function ReviewQueueClient({ adminAccessSource, mediaRequired, initialReviews }: { adminAccessSource: "allowlist" | "role"; mediaRequired: boolean; initialReviews: ReviewRelease[] }) {
   const [reviews, setReviews] = useState(initialReviews);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [rightsVerified, setRightsVerified] = useState<Record<string, boolean>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
@@ -61,6 +62,26 @@ export function ReviewQueueClient({ adminAccessSource, mediaRequired, initialRev
     }
     setReviews((current) => current.filter((item) => item.id !== release.id));
     setMessage(`${release.title} was ${decision === "approve" ? "approved" : "returned to the artist"}.`);
+    setBusyId(null);
+  }
+
+  async function recordRightsConfirmation(release: ReviewRelease) {
+    setBusyId(release.id);
+    setMessage("");
+    const response = await fetch("/api/admin/reviews", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ releaseId: release.id, decision: "confirm_rights", reviewNote: "" }),
+    });
+    const data = await response.json() as { error?: string; release?: ReviewRelease };
+    if (!response.ok || !data.release) {
+      setMessage(data.error ?? "The rights confirmation could not be recorded.");
+      setBusyId(null);
+      return;
+    }
+    setReviews((current) => current.map((item) => item.id === release.id ? { ...item, rightsConfirmed: true } : item));
+    setRightsVerified((current) => ({ ...current, [release.id]: false }));
+    setMessage(`Rights declaration recorded for ${release.title}.`);
     setBusyId(null);
   }
 
@@ -131,8 +152,10 @@ export function ReviewQueueClient({ adminAccessSource, mediaRequired, initialRev
                 {!release.media.length && <p>No media uploaded yet.</p>}
               </div>
               {blockers.length > 0 && <p className="review-blockers">{blockers.join(" ")}</p>}
+              {!release.rightsConfirmed && <label className="catalog-check rights-confirmation"><input type="checkbox" checked={rightsVerified[release.id] ?? false} onChange={(event) => setRightsVerified((current) => ({ ...current, [release.id]: event.target.checked }))} /><span>I verified the artist has declared the necessary rights for this release.</span></label>}
               <label className="review-note"><span>Reviewer note</span><Textarea value={note} onChange={(event) => setNotes((current) => ({ ...current, [release.id]: event.target.value }))} maxLength={1000} placeholder="Required when returning a release; optional on approval." /></label>
               <div className="review-actions">
+                {!release.rightsConfirmed && <Button variant="outline" disabled={busyId === release.id || !rightsVerified[release.id]} onClick={() => recordRightsConfirmation(release)}>{busyId === release.id ? <LoaderCircle className="catalog-spinner" /> : <ShieldCheck />} Record rights confirmation</Button>}
                 <Button variant="outline" disabled={busyId === release.id || !note.trim()} onClick={() => decide(release, "reject")}>{busyId === release.id ? <LoaderCircle className="catalog-spinner" /> : <X />} Return to artist</Button>
                 <Button disabled={busyId === release.id || blockers.length > 0} onClick={() => decide(release, "approve")}>{busyId === release.id ? <LoaderCircle className="catalog-spinner" /> : <Check />} Approve release</Button>
               </div>

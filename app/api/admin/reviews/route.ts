@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 const inputSchema = z.object({
   releaseId: z.string().min(1),
-  decision: z.enum(["approve", "reject", "takedown", "reinstate"]),
+  decision: z.enum(["approve", "reject", "takedown", "reinstate", "confirm_rights"]),
   reviewNote: z.string().trim().max(1000),
 }).superRefine((input, context) => {
   if (["reject", "takedown", "reinstate"].includes(input.decision) && !input.reviewNote) {
@@ -32,6 +32,19 @@ export async function POST(request: Request) {
   const db = getDb();
   const [release] = await db.select().from(releases).where(eq(releases.id, parsed.data.releaseId)).limit(1);
   if (!release) return NextResponse.json({ error: "Release not found." }, { status: 404 });
+  if (parsed.data.decision === "confirm_rights") {
+    if (release.approvalStatus !== "pending") return NextResponse.json({ error: "Only pending releases can have a rights declaration recorded here." }, { status: 409 });
+    if (release.rightsConfirmed) return NextResponse.json({ error: "Rights are already confirmed for this release." }, { status: 409 });
+    const now = new Date();
+    await db.update(releases).set({ rightsConfirmed: true, updatedAt: now }).where(eq(releases.id, release.id));
+    await db.insert(adminAuditLogs).values({
+      id: randomUUID(), actorId: admin.id, actorEmail: admin.email,
+      action: "catalog.release_rights_confirmed", entityType: "release", entityId: release.id,
+      details: JSON.stringify({ title: release.title, verification: "admin_recorded_artist_declaration" }), createdAt: now,
+    });
+    const [updatedRelease] = await db.select().from(releases).where(eq(releases.id, release.id)).limit(1);
+    return NextResponse.json({ release: updatedRelease });
+  }
   if (parsed.data.decision === "takedown") {
     if (release.approvalStatus !== "approved") return NextResponse.json({ error: "Only approved releases can be taken down." }, { status: 409 });
     const now = new Date();

@@ -227,6 +227,9 @@ test("keeps radio-ready confirmation and platform links in the artist workflow",
   assert.match(reviewClient, /Radio-ready confirmed/);
   assert.match(mediaRoute, /Confirm that this is the clean radio-ready version before uploading/);
   assert.match(mediaRoute, /Confirm that you hold the required rights before uploading release media/);
+  assert.match(reviewClient, /Record rights confirmation/);
+  assert.match(reviewClient, /I verified the artist has declared the necessary rights/);
+  assert.match(reviewPage, /rightsConfirmed: releases\.rightsConfirmed/);
 });
 
 test("keeps release metadata inputs searchable and duration compatible", async () => {
