@@ -8,7 +8,8 @@
   "scripts": {
     "install:ci": "node scripts/sites-env.mjs -- node scripts/install-ci-verified.mjs",
     "dev": "node scripts/dev-verified.mjs",
-    "build": "node scripts/build-verified.mjs",
+    "build": "node scripts/build-verified.mjs --target production",
+    "build:staging": "node scripts/build-verified.mjs --target staging",
     "start": "node scripts/start-verified.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
     "lint": "node scripts/sites-env.mjs -- eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .work-tmp",

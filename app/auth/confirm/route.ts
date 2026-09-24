@@ -2,6 +2,9 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServerClient, supabaseConfigured } from "@/lib/supabase/server";
 import { authRedirect } from "@/app/auth/paths";
 import { provisionMember } from "@/lib/member-provisioning";
+import { provisionStagingIdentity } from "@/lib/staging-access.mjs";
+
+declare const __CHUNESIDE_STAGING_BUILD__: boolean;
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -16,7 +19,17 @@ export async function GET(request: Request) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     if (error) return signInRedirect(url, "confirmation_failed", returnTo);
-    if (data.user) await provisionMember(data.user);
+    if (data.user) {
+      const user = data.user;
+      const allowed = await provisionStagingIdentity(
+        user,
+        __CHUNESIDE_STAGING_BUILD__,
+        process.env.CHUNESIDE_STAGING_ACCESS_GATE,
+        () => provisionMember(user),
+        async () => { await supabase.auth.signOut(); },
+      );
+      if (!allowed) return signInRedirect(url, "staging_access_denied", returnTo);
+    }
   } catch {
     return signInRedirect(url, "confirmation_failed", returnTo);
   }

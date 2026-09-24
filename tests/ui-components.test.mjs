@@ -302,8 +302,8 @@ test("provisions the D1 member record after Supabase authentication completes", 
     readFile(path.join(root, "lib", "member-provisioning.ts"), "utf8"),
   ]);
 
-  assert.match(callback, /await provisionMember\(data\.user\)/);
-  assert.match(confirmation, /await provisionMember\(data\.user\)/);
+  assert.match(callback, /provisionStagingIdentity\([\s\S]*?\(\) => provisionMember\(/);
+  assert.match(confirmation, /provisionStagingIdentity\([\s\S]*?\(\) => provisionMember\(/);
   assert.match(provisioner, /lower\(\$\{members\.email\}\) = lower\(\$\{email\}\)/);
 });
 
