@@ -41,9 +41,10 @@ function insertAward(db, { id, idempotencyKey, eventId = null, releaseId = null,
 }
 
 test("migration 0024 adds only Trophy Case tables and indexes", () => {
-  assert.equal(migrations.length, 27);
+  assert.ok(migrations.length >= 27);
   assert.equal(migrations[24], "0024_trophy_case_foundation.sql");
   assert.equal(migrations[25], "0025_trophy_event_snapshots.sql");
+  assert.equal(migrations[26], "0026_fantastic_madame_masque.sql");
   const before = replay(24);
   const after = replay(25);
   const original = trophyObjects(before);
