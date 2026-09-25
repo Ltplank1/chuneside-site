@@ -1,4 +1,5 @@
-import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const members = sqliteTable("members", {
   id: text("id").primaryKey(),
@@ -166,6 +167,7 @@ export const releases = sqliteTable("releases", {
   uniqueIndex("idx_releases_legacy_track").on(table.legacyTrackId),
   index("idx_releases_artist").on(table.artistProfileId),
   index("idx_releases_approval_lane").on(table.approvalStatus, table.discoveryLane),
+  index("idx_releases_publication").on(table.publicationStatus, table.publicationAt),
 ]);
 
 // A release keeps one canonical row and one primary artist for stable IDs, stats, and likes.
@@ -180,6 +182,7 @@ export const releaseArtistCredits = sqliteTable("release_artist_credits", {
 }, (table) => [
   uniqueIndex("idx_release_artist_credit_unique").on(table.releaseId, table.artistProfileId, table.creditRole),
   index("idx_release_artist_credit_artist").on(table.artistProfileId),
+  check("release_artist_credits_credit_role_check", sql`${table.creditRole} IN ('featured', 'co_artist')`),
 ]);
 
 export const releaseCredits = sqliteTable("release_credits", {
@@ -434,6 +437,7 @@ export const stagePerformances = sqliteTable("stage_performances", {
   index("idx_stage_performances_type_status").on(table.performanceType, table.status),
   index("idx_stage_performances_status_region").on(table.status, table.region),
   index("idx_stage_performances_placement_dates").on(table.homePlacement, table.featureStartAt, table.featureEndAt),
+  index("idx_stage_performances_publication").on(table.status, table.publishAt),
 ]);
 
 export const stageTracklistEntries = sqliteTable("stage_tracklist_entries", {
@@ -451,4 +455,62 @@ export const stageTracklistEntries = sqliteTable("stage_tracklist_entries", {
   uniqueIndex("idx_stage_tracklist_performance_position").on(table.performanceId, table.position),
   index("idx_stage_tracklist_artist").on(table.artistProfileId),
   index("idx_stage_tracklist_release").on(table.releaseId),
+]);
+
+export const trophyDefinitions = sqliteTable("trophy_definitions", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  category: text("category", { enum: ["milestone", "stage", "ranking", "competition", "championship", "special"] }).notNull(),
+  repeatable: integer("repeatable", { mode: "boolean" }).notNull().default(false),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  artworkObjectKey: text("artwork_object_key"),
+  artworkContentType: text("artwork_content_type"),
+  artworkVersion: integer("artwork_version").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  updatedBy: text("updated_by"),
+}, (table) => [
+  uniqueIndex("idx_trophy_definitions_key").on(table.key),
+  index("idx_trophy_definitions_active_category").on(table.active, table.category),
+]);
+
+export const artistTrophies = sqliteTable("artist_trophies", {
+  id: text("id").primaryKey(),
+  definitionId: text("definition_id").notNull().references(() => trophyDefinitions.id, { onDelete: "restrict" }),
+  artistProfileId: text("artist_profile_id").notNull().references(() => artistProfiles.id, { onDelete: "restrict" }),
+  releaseId: text("release_id").references(() => releases.id, { onDelete: "set null" }),
+  stagePerformanceId: text("stage_performance_id").references(() => stagePerformances.id, { onDelete: "set null" }),
+  sourceType: text("source_type").notNull(),
+  sourceEventId: text("source_event_id"),
+  sourceEventTitleSnapshot: text("source_event_title_snapshot"),
+  sourceEventDateSnapshot: integer("source_event_date_snapshot", { mode: "timestamp_ms" }),
+  idempotencyKey: text("idempotency_key").notNull(),
+  achievementKey: text("achievement_key"),
+  replacesAwardId: text("replaces_award_id"),
+  awardMethod: text("award_method", { enum: ["manual", "automatic"] }).notNull(),
+  awardedAt: integer("awarded_at", { mode: "timestamp_ms" }).notNull(),
+  titleSnapshot: text("title_snapshot").notNull(),
+  descriptionSnapshot: text("description_snapshot").notNull(),
+  categorySnapshot: text("category_snapshot").notNull(),
+  artistNameSnapshot: text("artist_name_snapshot").notNull(),
+  releaseTitleSnapshot: text("release_title_snapshot"),
+  artworkObjectKeySnapshot: text("artwork_object_key_snapshot"),
+  artworkContentTypeSnapshot: text("artwork_content_type_snapshot"),
+  artworkVersionSnapshot: integer("artwork_version_snapshot").notNull().default(0),
+  note: text("note"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  createdBy: text("created_by"),
+  revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+  revokedBy: text("revoked_by"),
+  revocationReason: text("revocation_reason"),
+}, (table) => [
+  uniqueIndex("idx_artist_trophies_idempotency").on(table.idempotencyKey),
+  uniqueIndex("idx_artist_trophies_active_achievement").on(table.achievementKey).where(sql`${table.revokedAt} IS NULL`),
+  index("idx_artist_trophies_artist_date").on(table.artistProfileId, table.awardedAt),
+  index("idx_artist_trophies_definition_artist").on(table.definitionId, table.artistProfileId),
+  index("idx_artist_trophies_source_event").on(table.sourceType, table.sourceEventId),
+  index("idx_artist_trophies_release").on(table.releaseId),
+  index("idx_artist_trophies_stage").on(table.stagePerformanceId),
 ]);

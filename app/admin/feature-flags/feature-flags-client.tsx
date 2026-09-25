@@ -79,6 +79,7 @@ export function FeatureFlagsClient({
         <Button asChild variant="outline"><Link href="/admin/ai-controls">AI Controls</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/visualizer">Visualizer</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/stage">Stage</Link></Button>
+        <Button asChild variant="outline"><Link href="/admin/trophies">Trophy Case</Link></Button>
         <Button asChild variant="outline"><Link href="/admin/audit">Audit Log</Link></Button>
       </nav>
 

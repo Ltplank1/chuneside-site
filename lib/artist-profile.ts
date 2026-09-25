@@ -1,8 +1,8 @@
 import { cache } from "react";
-import { and, asc, eq, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
 import { getAdminGate } from "@/app/admin-auth";
 import { getDb } from "@/db";
-import { artistProfiles, releaseArtistCredits, releases, stagePerformances } from "@/db/schema";
+import { artistProfiles, artistTrophies, releaseArtistCredits, releases, stagePerformances } from "@/db/schema";
 import { baselineArtists } from "@/lib/catalog-seed";
 import { demoTracks, formatTrackDuration, type PublicTrack } from "@/lib/public-catalog";
 import { isFeatureAvailable } from "@/lib/feature-flags";
@@ -21,7 +21,23 @@ export type PublicArtistProfile = {
   socialLinks: Record<string, string>;
   releases: PublicTrack[];
   stagePerformances: PublicStagePerformance[];
+  trophies: PublicArtistTrophy[];
+  trophyCaseEnabled: boolean;
+  trophyHasMore: boolean;
+  trophyPage: number;
   source: "database" | "demo";
+};
+
+export type PublicArtistTrophy = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  awardedAt: string;
+  sourceEventTitle: string | null;
+  sourceEventDate: string | null;
+  releaseTitle: string | null;
+  artworkUrl: string | null;
 };
 
 export type PublicStagePerformance = {
@@ -60,6 +76,10 @@ function demoProfile(slug: string): PublicArtistProfile | null {
     socialLinks: {},
     releases: demoTracks.filter((track) => track.artistSlug === artist.slug),
     stagePerformances: [],
+    trophies: [],
+    trophyCaseEnabled: false,
+    trophyHasMore: false,
+    trophyPage: 1,
     source: "demo",
   };
 }
@@ -78,7 +98,7 @@ function parseSocialLinks(value: string) {
   }
 }
 
-export const getPublicArtistProfile = cache(async (slug: string): Promise<PublicArtistProfile | null> => {
+export const getPublicArtistProfile = cache(async (slug: string, trophyPage = 1): Promise<PublicArtistProfile | null> => {
   const fallback = demoProfile(slug);
 
   try {
@@ -105,6 +125,9 @@ export const getPublicArtistProfile = cache(async (slug: string): Promise<Public
     )).orderBy(asc(releases.releaseDate), asc(releases.title));
 
     let publicStageRows: Array<typeof stagePerformances.$inferSelect> = [];
+    let publicTrophies: PublicArtistTrophy[] = [];
+    let trophyHasMore = false;
+    let trophyCaseEnabled = false;
     const [artistStageAvailable, djStageAvailable] = await Promise.all([
       isFeatureAvailable(db, "chuneside_stage", audience),
       isFeatureAvailable(db, "dj_stage", audience),
@@ -124,6 +147,35 @@ export const getPublicArtistProfile = cache(async (slug: string): Promise<Public
       } catch {
         publicStageRows = [];
       }
+    }
+
+    try {
+      trophyCaseEnabled = await isFeatureAvailable(db, "trophy_case", audience);
+      if (trophyCaseEnabled) {
+        const awardRows = await db.select().from(artistTrophies).where(and(
+        eq(artistTrophies.artistProfileId, artist.id),
+        isNull(artistTrophies.revokedAt),
+        )).orderBy(desc(artistTrophies.awardedAt), desc(artistTrophies.id)).limit(49).offset((trophyPage - 1) * 48);
+        trophyHasMore = awardRows.length > 48;
+        publicTrophies = awardRows.slice(0, 48).map((award) => ({
+        id: award.id,
+        title: award.titleSnapshot,
+        description: award.descriptionSnapshot,
+        category: award.categorySnapshot,
+        awardedAt: award.awardedAt.toISOString(),
+        sourceEventTitle: award.sourceEventTitleSnapshot,
+        sourceEventDate: award.sourceEventDateSnapshot?.toISOString() ?? null,
+        releaseTitle: award.releaseTitleSnapshot,
+        artworkUrl: award.artworkObjectKeySnapshot && award.artworkVersionSnapshot
+          ? `/api/trophies/artwork/${encodeURIComponent(award.definitionId)}?version=${award.artworkVersionSnapshot}&award=${encodeURIComponent(award.id)}`
+          : null,
+        }));
+      }
+    } catch (error) {
+      console.error("Artist Trophy Case query failed", { artistProfileId: artist.id, error: error instanceof Error ? error.message : String(error) });
+      trophyCaseEnabled = false;
+      publicTrophies = [];
+      trophyHasMore = false;
     }
 
     return {
@@ -175,6 +227,10 @@ export const getPublicArtistProfile = cache(async (slug: string): Promise<Public
         favoriteCount: performance.favoriteCount,
         performanceType: performance.performanceType as "artist" | "dj",
       })),
+      trophies: publicTrophies,
+      trophyCaseEnabled,
+      trophyHasMore,
+      trophyPage,
       source: "database",
     };
   } catch {

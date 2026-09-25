@@ -2,15 +2,16 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BadgeCheck, Disc3, ExternalLink, MapPin, Play, PlaySquare, Sparkles } from "lucide-react";
+import { ArrowLeft, Award, BadgeCheck, CalendarDays, Disc3, ExternalLink, MapPin, Play, PlaySquare, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPublicArtistProfile } from "@/lib/artist-profile";
 import { isSpokenWordGenre } from "@/lib/submission-options";
 import { getPublishedSiteContent } from "@/lib/site-content";
 import { publicContentStyle } from "@/lib/site-content-shared";
 import { ArtistReleaseList } from "./artist-release-list";
+import styles from "./artist-trophy-case.module.css";
 
-type ArtistPageProps = { params: Promise<{ slug: string }> };
+type ArtistPageProps = { params: Promise<{ slug: string }>; searchParams?: Promise<{ trophies?: string }> };
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +30,11 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
   };
 }
 
-export default async function ArtistPage({ params }: ArtistPageProps) {
+export default async function ArtistPage({ params, searchParams }: ArtistPageProps) {
   const { slug } = await params;
-  const artist = await getPublicArtistProfile(slug);
+  const requestedPage = Number((await searchParams)?.trophies ?? "1");
+  const trophyPage = Number.isSafeInteger(requestedPage) ? Math.min(1000, Math.max(1, requestedPage)) : 1;
+  const artist = await getPublicArtistProfile(slug, trophyPage);
   if (!artist) notFound();
   const content = await getPublishedSiteContent();
 
@@ -100,6 +103,38 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
               </article>
             ))}
           </div>
+        </section>
+      )}
+
+      {artist.trophyCaseEnabled && (
+        <section className={styles.section} aria-labelledby="artist-trophies-heading">
+          <div className="artist-release-heading">
+            <div><p className="kicker"><Award /> ChuneSide achievements</p><h2 id="artist-trophies-heading">Trophy Case</h2></div>
+            <span>{artist.trophies.length} {artist.trophies.length === 1 ? "achievement" : "achievements"}{artist.trophyPage > 1 ? ` · Page ${artist.trophyPage}` : ""}</span>
+          </div>
+          {artist.trophies.length ? <div className={styles.grid}>
+            {artist.trophies.map((trophy) => (
+              <article className={styles.item} key={trophy.id}>
+                <div className={styles.art}>
+                  {trophy.artworkUrl
+                    ? <Image src={trophy.artworkUrl} alt={`${trophy.title} trophy artwork`} width={88} height={88} unoptimized />
+                    : <Award aria-hidden="true" />}
+                </div>
+                <div className={styles.copy}>
+                  <span>{trophy.category.replaceAll("_", " ")}</span>
+                  <h3>{trophy.title}</h3>
+                  {trophy.description && <p>{trophy.description}</p>}
+                  <small><CalendarDays aria-hidden="true" /> {new Date(trophy.awardedAt).toLocaleDateString("en", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" })}</small>
+                  {trophy.releaseTitle && <small><Disc3 aria-hidden="true" /> {trophy.releaseTitle}</small>}
+                  {trophy.sourceEventTitle && <small><Award aria-hidden="true" /> {trophy.sourceEventTitle}{trophy.sourceEventDate ? ` · ${new Date(trophy.sourceEventDate).toLocaleDateString("en", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" })}` : ""}</small>}
+                </div>
+              </article>
+            ))}
+          </div> : <p className={styles.emptyState}>{artist.trophyPage > 1 ? "No more achievements on this page." : "This artist has not received any ChuneSide trophies yet."}</p>}
+          {(artist.trophyPage > 1 || artist.trophyHasMore) && <nav className={styles.pager} aria-label="Trophy Case pages">
+            {artist.trophyPage > 1 && <Button asChild variant="outline"><Link href={`/artists/${encodeURIComponent(slug)}?trophies=${artist.trophyPage - 1}#artist-trophies-heading`}>Newer trophies</Link></Button>}
+            {artist.trophyHasMore && <Button asChild variant="outline"><Link href={`/artists/${encodeURIComponent(slug)}?trophies=${artist.trophyPage + 1}#artist-trophies-heading`}>Older trophies</Link></Button>}
+          </nav>}
         </section>
       )}
 

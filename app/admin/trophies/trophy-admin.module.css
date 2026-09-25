@@ -1,0 +1,358 @@
+.shell {
+  padding-bottom: 3rem;
+}
+
+.loading,
+.empty {
+  max-width: 1400px;
+  margin: 1rem auto;
+  padding: 1rem;
+  color: #aaadb5;
+  background: #101116;
+  border: 1px solid #30333b;
+}
+
+.section {
+  max-width: 1400px;
+  margin: 1.25rem auto;
+  border: 1px solid #30333b;
+  background: #101116;
+}
+
+.sectionHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid #30333b;
+}
+
+.sectionHeading > div > span {
+  color: var(--primary);
+  font-size: .66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sectionHeading h2 {
+  margin: .2rem 0 0;
+  font-size: 1.35rem;
+}
+
+.sectionHeading > span {
+  color: #a6a9b1;
+  font-size: .76rem;
+}
+
+.definitionLayout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+}
+
+.definitionForm {
+  display: grid;
+  align-content: start;
+  gap: .85rem;
+  padding: 1rem;
+  border-right: 1px solid #30333b;
+}
+
+.definitionForm h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.definitionForm > label,
+.awardForm > label,
+.awardActions form label {
+  display: grid;
+  gap: .38rem;
+  color: #a6a9b1;
+  font-size: .68rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.formChecks {
+  display: grid;
+  gap: .5rem;
+}
+
+.formChecks label {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  color: #c5c7cd;
+  font-size: .8rem;
+}
+
+.formChecks input {
+  accent-color: var(--primary);
+}
+
+.formActions,
+.definitionTools,
+.awardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  align-items: center;
+}
+
+.definitionList {
+  min-width: 0;
+}
+
+.definitionRow {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: .85rem;
+  align-items: center;
+  padding: .8rem 1rem;
+  border-bottom: 1px solid #2a2c33;
+}
+
+.definitionRow:last-child {
+  border-bottom: 0;
+}
+
+.definitionArt {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--primary);
+  background: #17191f;
+  border: 1px solid #383b44;
+}
+
+.definitionArt img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.definitionArt > svg {
+  width: 28px;
+  height: 28px;
+}
+
+.definitionCopy {
+  min-width: 0;
+}
+
+.definitionCopy span,
+.awardRow > div:first-child > span {
+  color: #a4a7af;
+  font-size: .63rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.definitionCopy h3,
+.awardRow h3 {
+  margin: .18rem 0;
+  font-size: .96rem;
+}
+
+.definitionCopy p,
+.awardRow p {
+  margin: 0;
+  color: #a6a9b1;
+  font-family: Arial, sans-serif;
+  font-size: .78rem;
+  line-height: 1.4;
+}
+
+.definitionTools {
+  justify-content: flex-end;
+}
+
+.uploadButton,
+.previewLink {
+  position: relative;
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: .4rem .65rem;
+  color: #e9ebee;
+  background: #17191f;
+  border: 1px solid #3a3d46;
+  font-size: .75rem;
+  cursor: pointer;
+}
+
+.uploadButton svg,
+.previewLink svg {
+  width: 15px;
+  height: 15px;
+}
+
+.uploadButton input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.previewLink[aria-disabled="true"] {
+  opacity: .45;
+  pointer-events: none;
+}
+
+.awardForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .85rem;
+  padding: 1rem;
+}
+
+.awardNote,
+.awardSubmit {
+  grid-column: 1 / -1;
+}
+
+.awardSubmit {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.historySearch {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 420px);
+  align-items: center;
+  gap: .8rem;
+  padding: 1rem;
+  color: #a6a9b1;
+  font-size: .72rem;
+  text-transform: uppercase;
+  font-weight: 850;
+}
+
+.awardList {
+  border-top: 1px solid #30333b;
+}
+
+.awardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #2a2c33;
+}
+
+.awardRow:last-child {
+  border-bottom: 0;
+}
+
+.awardRow > div:first-child {
+  min-width: 0;
+}
+
+.awardRow small {
+  display: block;
+  margin-top: .3rem;
+  color: #777b84;
+  font-size: .7rem;
+}
+
+.revoked {
+  opacity: .66;
+}
+
+.awardActions details {
+  position: relative;
+}
+
+.awardActions summary {
+  padding: .55rem .7rem;
+  color: #e9ebee;
+  border: 1px solid #3a3d46;
+  font-size: .76rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.awardActions summary::-webkit-details-marker {
+  display: none;
+}
+
+.awardActions details[open] form {
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  top: calc(100% + .4rem);
+  display: grid;
+  width: min(360px, calc(100vw - 2rem));
+  gap: .7rem;
+  padding: .85rem;
+  background: #111318;
+  border: 1px solid #41444d;
+  box-shadow: 0 14px 30px #0009;
+}
+
+.awardActions form textarea {
+  min-height: 72px;
+  padding: .6rem;
+  color: #fff;
+  background: #17191f;
+  border: 1px solid #41444d;
+}
+
+@media (max-width: 850px) {
+  .definitionLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .definitionForm {
+    border-right: 0;
+    border-bottom: 1px solid #30333b;
+  }
+
+  .definitionRow {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .definitionArt {
+    width: 56px;
+    height: 56px;
+  }
+
+  .definitionTools {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .awardForm {
+    grid-template-columns: 1fr;
+  }
+
+  .awardNote,
+  .awardSubmit {
+    grid-column: auto;
+  }
+
+  .awardRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .awardActions {
+    width: 100%;
+  }
+
+  .historySearch {
+    grid-template-columns: 1fr;
+    gap: .45rem;
+  }
+}
