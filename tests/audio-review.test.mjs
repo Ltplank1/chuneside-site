@@ -62,6 +62,8 @@ const aliases = {
 };
 const flags = loadTypeScript("lib/feature-flags.ts", aliases);
 aliases["@/lib/feature-flags"] = flags;
+const jobs = loadTypeScript("lib/audio-review-jobs.ts", aliases);
+aliases["@/lib/audio-review-jobs"] = jobs;
 const service = loadTypeScript("lib/audio-review.ts", aliases);
 aliases["@/lib/audio-review"] = service;
 const route = loadTypeScript("app/api/admin/audio-review/route.ts", aliases);
@@ -100,7 +102,7 @@ function post(body) { return route.POST(new Request("https://example.test/api/ad
 function get(query = "") { return route.GET(new Request(`https://example.test/api/admin/audio-review${query}`)); }
 
 test("0027 migration adds only isolated Audio Review tables and preserves all earlier SQL objects", () => {
-  assert.equal(migrations.length, 28);
+  assert.ok(migrations.length >= 28);
   assert.match(migrations[27], /^0027_.*\.sql$/);
   const before = replay(27), after = replay(28);
   const objects = (db) => db.prepare("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name").all();
@@ -109,8 +111,8 @@ test("0027 migration adds only isolated Audio Review tables and preserves all ea
   assert.deepEqual(newObjects.filter((item) => !oldObjects.some((old) => old.name === item.name) && item.type === "table").map((item) => item.name).sort(), ["audio_review_cases", "audio_review_findings", "audio_review_reports"]);
   assert.deepEqual(after.prepare("PRAGMA foreign_key_check").all(), []);
   const journal = JSON.parse(readFileSync(path.join(root, "drizzle/meta/_journal.json"), "utf8"));
-  assert.equal(journal.entries.length, 28);
-  assert.equal(journal.entries.at(-1).tag, migrations[27].replace(/\.sql$/, ""));
+  assert.equal(journal.entries.length, migrations.length);
+  assert.equal(journal.entries[27].tag, migrations[27].replace(/\.sql$/, ""));
   const priorSnapshot = JSON.parse(readFileSync(path.join(root, "drizzle/meta/0026_snapshot.json"), "utf8"));
   const nextSnapshot = JSON.parse(readFileSync(path.join(root, "drizzle/meta/0027_snapshot.json"), "utf8"));
   assert.equal(nextSnapshot.prevId, priorSnapshot.id);

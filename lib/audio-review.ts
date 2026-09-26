@@ -3,6 +3,7 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import type { getDb } from "@/db";
 import { adminAuditLogs, artistProfiles, audioReviewCases, audioReviewFindings, releaseMedia, releases } from "@/db/schema";
+import { claimAudioAnalysisJob, completeAudioAnalysisJob, createAudioAnalysisJob, startAudioAnalysisJob, type JobResult } from "@/lib/audio-review-jobs";
 
 type Db = ReturnType<typeof getDb>;
 export type AudioCheckKind = "technical" | "clean" | "ai";
@@ -122,24 +123,11 @@ export async function recordAudioCheckResult(db: Db, reviewId: string, kind: Aud
   if (result.status === "pass" && result.findings.some((finding) => finding.severity !== "info")) {
     throw new AudioReviewError("A passing check cannot contain warning or critical findings.");
   }
-  const [latest] = await db.select({ status: audioReviewCases.status, checkStatus: audioReviewCases[statusKey] })
-    .from(audioReviewCases).where(eq(audioReviewCases.id, reviewId)).limit(1);
-  if (!latest || !["pending", "needs_review"].includes(latest.status) || latest.checkStatus !== "not_performed") {
-    throw new AudioReviewError("This review changed while the check was running.", 409);
-  }
-  const now = new Date();
-  const attention = ["inconclusive", "warning", "needs_review", "fail"].includes(result.status);
-  const fields = kind === "technical" ? { technicalStatus: result.status, technicalCheckedAt: now }
-    : kind === "clean" ? { cleanStatus: result.status, cleanCheckedAt: now }
-      : { aiStatus: result.status, aiCheckedAt: now };
-  await db.batch([
-    db.update(audioReviewCases).set({ ...fields, status: attention ? "needs_review" : review.status, updatedAt: now }).where(eq(audioReviewCases.id, reviewId)),
-    ...result.findings.map((finding) => db.insert(audioReviewFindings).values({
-      id: randomUUID(), caseId: reviewId, origin: `${kind}_provider` as "technical_provider" | "clean_provider" | "ai_provider",
-      category: kind, code: finding.code, severity: finding.severity, message: finding.message,
-      confidence: finding.confidence ?? null, offsetSeconds: finding.offsetSeconds ?? null, createdAt: now,
-    })),
-  ]);
+  const { job } = await createAudioAnalysisJob(db, { caseId: reviewId, kind, analyzerVersion: "legacy-provider-v1" });
+  const claimed = await claimAudioAnalysisJob(db, job.id);
+  if (!claimed) throw new AudioReviewError("This check is already being processed or has a recorded result.", 409);
+  await startAudioAnalysisJob(db, job.id, claimed.leaseToken);
+  await completeAudioAnalysisJob(db, job.id, claimed.leaseToken, result as JobResult);
   const [updated] = await db.select().from(audioReviewCases).where(eq(audioReviewCases.id, reviewId)).limit(1);
   return updated;
 }

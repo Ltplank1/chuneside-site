@@ -563,6 +563,10 @@ export const audioReviewCases = sqliteTable("audio_review_cases", {
 export const audioReviewFindings = sqliteTable("audio_review_findings", {
   id: text("id").primaryKey(),
   caseId: text("case_id").notNull().references(() => audioReviewCases.id, { onDelete: "restrict" }),
+  jobId: text("job_id"),
+  jobOrdinal: integer("job_ordinal"),
+  analyzerVersion: text("analyzer_version"),
+  classification: text("classification", { enum: ["deterministic", "informational", "heuristic"] }),
   origin: text("origin", { enum: ["technical_provider", "clean_provider", "ai_provider", "admin", "member"] }).notNull(),
   category: text("category", { enum: ["technical", "clean", "ai", "other"] }).notNull(),
   code: text("code").notNull(),
@@ -574,6 +578,53 @@ export const audioReviewFindings = sqliteTable("audio_review_findings", {
 }, (table) => [
   index("idx_audio_review_findings_case_date").on(table.caseId, table.createdAt),
   index("idx_audio_review_findings_category").on(table.category, table.severity),
+  uniqueIndex("idx_audio_review_findings_job_ordinal").on(table.jobId, table.jobOrdinal),
+]);
+
+export const audioReviewJobs = sqliteTable("audio_review_jobs", {
+  id: text("id").primaryKey(),
+  caseId: text("case_id").notNull().references(() => audioReviewCases.id, { onDelete: "restrict" }),
+  releaseIdSnapshot: text("release_id_snapshot").notNull(),
+  mediaIdSnapshot: text("media_id_snapshot").notNull(),
+  mediaVariant: text("media_variant", { enum: ["master", "stream"] }).notNull(),
+  mediaVersion: integer("media_version").notNull(),
+  sourceMediaIdSnapshot: text("source_media_id_snapshot"),
+  checkKind: text("check_kind", { enum: ["technical", "clean", "ai"] }).notNull(),
+  analyzerVersion: text("analyzer_version").notNull(),
+  state: text("state", { enum: ["queued", "claimed", "processing", "retryable", "completed", "permanently_failed", "superseded"] }).notNull().default("queued"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull(),
+  leaseToken: text("lease_token"),
+  leaseExpiresAt: integer("lease_expires_at"),
+  leaseMaxUntil: integer("lease_max_until"),
+  claimedAt: integer("claimed_at"),
+  lastRenewedAt: integer("last_renewed_at"),
+  nextEligibleAt: integer("next_eligible_at"),
+  lastFailureCategory: text("last_failure_category"),
+  lastFailureCode: text("last_failure_code"),
+  lastFailureMessage: text("last_failure_message"),
+  resultStatus: text("result_status", { enum: ["inconclusive", "pass", "warning", "needs_review", "fail"] }),
+  resultJson: text("result_json"),
+  completionId: text("completion_id"),
+  completionLeaseToken: text("completion_lease_token"),
+  completedAt: integer("completed_at"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("idx_audio_review_job_identity").on(table.caseId, table.checkKind, table.analyzerVersion),
+  index("idx_audio_review_jobs_ready").on(table.state, table.nextEligibleAt),
+  index("idx_audio_review_jobs_media").on(table.mediaIdSnapshot, table.state),
+]);
+
+export const audioReviewJobEvents = sqliteTable("audio_review_job_events", {
+  id: text("id").primaryKey(),
+  jobId: text("job_id").notNull().references(() => audioReviewJobs.id, { onDelete: "restrict" }),
+  event: text("event").notNull(),
+  attempt: integer("attempt").notNull(),
+  detailCode: text("detail_code"),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("idx_audio_review_job_events_job_time").on(table.jobId, table.createdAt),
 ]);
 
 export const audioReviewReports = sqliteTable("audio_review_reports", {
