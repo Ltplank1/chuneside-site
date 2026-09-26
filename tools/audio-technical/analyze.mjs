@@ -34,7 +34,7 @@ function finish(result, start) {
   return result;
 }
 
-function runTool(binary, args, { onStdout, timeoutMs = TIMEOUT_MS } = {}) {
+function runTool(binary, args, { onStdout, timeoutMs = TIMEOUT_MS, signal } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(binary, args, { shell: false, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
     let stderr = "";
@@ -47,11 +47,15 @@ function runTool(binary, args, { onStdout, timeoutMs = TIMEOUT_MS } = {}) {
       stoppedFor = reason;
       child.kill();
     };
+    const onAbort = () => stop("aborted");
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) onAbort();
     const timer = setTimeout(() => stop("timeout"), timeoutMs);
     const done = (error, value) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
       if (error) reject(error);
       else resolve(value);
     };
@@ -118,7 +122,7 @@ function sampleAccumulator(channels) {
   };
 }
 
-export async function analyzeLocalAudio(file, { ffmpeg = "ffmpeg", ffprobe = "ffprobe", timeoutMs = TIMEOUT_MS, media = null } = {}) {
+export async function analyzeLocalAudio(file, { ffmpeg = "ffmpeg", ffprobe = "ffprobe", timeoutMs = TIMEOUT_MS, media = null, signal: abortSignal } = {}) {
   const start = performance.now();
   const startedAt = new Date().toISOString();
   const result = makeResult(media, startedAt);
@@ -133,7 +137,7 @@ export async function analyzeLocalAudio(file, { ffmpeg = "ffmpeg", ffprobe = "ff
     return finish(result, start);
   }
   try {
-    const output = await runTool(ffprobe, ["-v", "error", "-protocol_whitelist", "file,pipe", "-show_entries", "format=format_name,duration,bit_rate:stream=index,codec_type,codec_name,sample_rate,channels,bits_per_raw_sample,bits_per_sample,bit_rate", "-of", "json", "-i", input], { timeoutMs });
+    const output = await runTool(ffprobe, ["-v", "error", "-protocol_whitelist", "file,pipe", "-show_entries", "format=format_name,duration,bit_rate:stream=index,codec_type,codec_name,sample_rate,channels,bits_per_raw_sample,bits_per_sample,bit_rate", "-of", "json", "-i", input], { timeoutMs, signal: abortSignal });
     const probe = JSON.parse(output);
     const streams = probe.streams?.filter((stream) => stream.codec_type === "audio") ?? [];
     if (streams.length !== 1) throw new Error("unsupported_audio_stream_count");
@@ -146,6 +150,7 @@ export async function analyzeLocalAudio(file, { ffmpeg = "ffmpeg", ffprobe = "ff
     const accumulator = sampleAccumulator(channels);
     await runTool(ffmpeg, ["-nostdin", "-v", "error", "-xerror", "-protocol_whitelist", "file,pipe", "-i", input, "-map", `0:${stream.index}`, "-vn", "-sn", "-dn", "-f", "f32le", "-acodec", "pcm_f32le", "pipe:1"], {
       timeoutMs,
+      signal: abortSignal,
       onStdout: (chunk, totalBytes) => accumulator.add(chunk, totalBytes),
     });
     const signal = accumulator.metrics();
@@ -181,7 +186,7 @@ export async function analyzeLocalAudio(file, { ffmpeg = "ffmpeg", ffprobe = "ff
     result.status = result.findings.some((item) => item.severity === "warning") ? "warning" : "pass";
   } catch (error) {
     const message = String(error?.message ?? error);
-    const processorCodes = ["timeout", "output_limit", "decoded_size_limit", "non_finite_sample", "incomplete_pcm_output"];
+    const processorCodes = ["timeout", "aborted", "output_limit", "decoded_size_limit", "non_finite_sample", "incomplete_pcm_output"];
     const processorFailure = processorCodes.includes(message) || error?.code === "ENOENT";
     result.failure = { kind: processorFailure ? "processor_error" : "decode_error", code: processorFailure ? (error?.code === "ENOENT" ? "tool_unavailable" : message) : "probe_or_decode_failed" };
     result.findings.push(finding(result.failure.code, processorFailure ? "informational" : "deterministic", processorFailure ? "warning" : "critical", processorFailure ? "Analysis did not complete." : "The selected audio stream could not be fully decoded."));
